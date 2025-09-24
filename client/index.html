@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Shipper Location Simulation</title>
+</head>
+<body>
+<h1>Shipper Location Tracking</h1>
+<button id="statusBtn">Check Status</button>
+<button id="openMapBtn">Open Goggle Maps</button>
+<script>
+    const API_BASE_URL = "http://192.168.237.130:8000";
+    const Available = "available"
+    const Busy = "busy"
+    let status = "hehe"
+    function getShipperIdFromUrl() {
+        const pathParts = window.location.pathname.split("/");
+        return pathParts[pathParts.length - 1];
+    }
+
+    const shipperID = getShipperIdFromUrl();
+    let intervalId = null;
+
+    if (!shipperID) {
+        console.error("Can not find shipperID");
+    } else {
+        console.log("ShipperID:", shipperID);
+        let latitude = 21.0278;
+        let longitude = 105.8342;
+
+        function getNextLocation(){
+            const stepLat = (Math.random() - 0.5) * 0.02;
+            const stepLng = (Math.random() - 0.5) * 0.02;
+            latitude += stepLat;
+            longitude += stepLng;
+            return { latitude, longitude};
+        }
+
+        async function fetchStatus(){
+            try{
+                const res = await fetch(`${API_BASE_URL}/shipper/${shipperID}`);
+                const data = await res.json();
+                status = data.shipper.status;
+                console.log("Fetched status:", status);
+                if(status === Available || status === Busy){
+                    startSendingLocation();
+                } else{
+                    stopSendingLocation();
+                }
+            } catch(err){
+                console.error("Error fetching status:", err);
+            }
+        }
+        async function sendLocation() {
+            if(status !== "available" && status !== "busy"){
+                console.log("Not sending location because status = ", status);
+                return;
+            }
+            const position = getNextLocation();
+            const payload = {
+                longitude: position.longitude,
+                latitude: position.latitude
+            };
+            console.log("Sending location: ", payload);
+
+            fetch(`${API_BASE_URL}/shipper/${shipperID}/location`,{
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(payload)
+            })
+                .then((res) =>{
+                    if(!res.ok){
+                        throw new Error(`HTTP error! status: ${res.status}`);
+                    }
+                    return res.json();
+                })
+                .then((data) =>{
+                    console.log("Server response:", data);
+                })
+                .catch((err) =>{
+                    console.error("Error sending location:", err);
+                });
+        }
+        function startSendingLocation() {
+            if (!intervalId) {
+                intervalId = setInterval(sendLocation, 5000);
+                console.log("Started sending location every 5s");
+            }
+        }
+
+        function stopSendingLocation() {
+            if (intervalId) {
+                clearInterval(intervalId);
+                intervalId = null;
+                console.log("Stopped sending location");
+            }
+        }
+        document.getElementById("statusBtn").addEventListener("click", fetchStatus);
+        document.getElementById("openMapBtn").addEventListener("click", () => {
+            const gmapUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
+            window.open(gmapUrl, "_blank"); // mở tab mới
+        });
+    }
+</script>
+</body>
+</html>
