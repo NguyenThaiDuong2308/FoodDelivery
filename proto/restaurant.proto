@@ -1,0 +1,30 @@
+syntax = "proto3";
+package proto;
+option go_package = "./pb";
+service RestaurantService{
+	rpc GetRestaurantInfoByID(GetRestaurantInfoByIDRequest) returns (GetRestaurantInfoByIDResponse);
+  rpc GetMenuItem(GetMenuItemRequest) returns (GetMenuItemResponse);
+}
+message GetRestaurantInfoByIDRequest{
+  uint32 restaurant_id = 1;
+}
+
+message GetRestaurantInfoByIDResponse{
+  uint32 id = 1;
+  int32 user_id = 2;
+  string status = 3;
+}
+
+message GetMenuItemRequest{
+  uint32 restaurant_id = 1;
+  uint32 menu_item_id = 2;
+}
+
+message GetMenuItemResponse{
+  uint32 id = 1;
+  uint32 restaurant_id = 2;
+  string name = 3;
+  string description = 4;
+  double price = 5;
+  bool available = 6;
+}

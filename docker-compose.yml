@@ -100,6 +100,7 @@ services:
       KAFKA_BROKERS: kafka:9092
       KAFKA_TOPIC: user.events
       KAFKA_GROUP_ID: restaurant-service-consumers
+      GRPC_PORT: 50051
     ports:
       - "8081:8081"
     depends_on:
@@ -135,8 +136,8 @@ services:
 
   order-service:
     build:
-      context: ./services/order-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/order-service/Dockerfile
     environment:
       DB_HOST: postgres
       DB_PORT: 5432
@@ -147,6 +148,7 @@ services:
       KAFKA_BROKERS: kafka:9092
       KAFKA_TOPIC: order.events
       JWT_SECRET: supersecret
+      GRPC_Server_Port: 50051
     ports:
       - "8083:8083"
     depends_on:
@@ -275,5 +277,6 @@ volumes:
   kafka_data:
 
 #Git token: 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
+# New token: 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
 #192.168.237.128
 

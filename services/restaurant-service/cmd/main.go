@@ -2,20 +2,23 @@ package main
 
 import (
 	"context"
+	"github.com/gin-gonic/gin"
+	"google.golang.org/grpc"
 	"log"
+	"net"
 	"os"
 	"os/signal"
+	"proto/pb"
 	"restaurant-service/api/route"
 	"restaurant-service/config"
 	"restaurant-service/infrastructure/databases"
 	"restaurant-service/infrastructure/kafka"
-	"restaurant-service/internal/handler"
+	grpc2 "restaurant-service/internal/handler/grpc"
 	kafka2 "restaurant-service/internal/handler/kafka"
+	"restaurant-service/internal/handler/rest"
 	"restaurant-service/internal/repository"
 	"restaurant-service/internal/service"
 	"syscall"
-
-	"github.com/gin-gonic/gin"
 )
 
 func main() {
@@ -43,8 +46,8 @@ func main() {
 			log.Fatal(err)
 		}
 	}()
-	restaurantHandler := handler.NewRestaurantHandler(restaurantService)
-	menuItemHandler := handler.NewMenuItemHandler(menuItemService, restaurantService)
+	restaurantHandler := rest.NewRestaurantHandler(restaurantService)
+	menuItemHandler := rest.NewMenuItemHandler(menuItemService, restaurantService)
 
 	r := gin.Default()
 	route.SetupRoutes(r, restaurantHandler, menuItemHandler)
@@ -54,12 +57,27 @@ func main() {
 			log.Fatal(err)
 		}
 	}()
+	grpcListener, err := net.Listen("tcp", ":"+cfg.ServerPort)
+	if err != nil {
+		log.Fatal("Faled to listen gRPC port: %v", err)
+	}
+	grpcServer := grpc.NewServer()
+	grpcHandler := grpc2.NewRestaurantServiceServer(restaurantService, menuItemService)
+
+	pb.RegisterRestaurantServiceServer(grpcServer, grpcHandler)
+	go func() {
+		log.Printf("gRPC server started on %s", cfg.ServerPort)
+		if err := grpcServer.Serve(grpcListener); err != nil {
+			log.Fatal(err)
+		}
+	}()
 
 	// Graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 	log.Println("Shutting down service...")
+	grpcServer.GracefulStop()
 	cancel()
 	err = reader.Close()
 	if err != nil {

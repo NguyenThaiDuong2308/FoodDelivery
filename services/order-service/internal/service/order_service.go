@@ -31,12 +31,12 @@ func (o orderService) CreateOrder(ctx context.Context, customerID int, restauran
 	order.RestaurantID = restaurantID
 	order.OrderItems = orderItems
 	order.TotalPrice = 0
-	_, err := o.restaurantClient.GetRestaurantInfoByID(ctx, restaurantID)
+	_, err := o.restaurantClient.GetRestaurantInfoByID(ctx, uint32(order.RestaurantID))
 	if err != nil {
 		return errors.New("Restaurant not found")
 	}
 	for _, item := range orderItems {
-		menuItem, err := o.restaurantClient.GetMenuItem(ctx, order.RestaurantID, item.MenuItemID)
+		menuItem, err := o.restaurantClient.GetMenuItem(ctx, uint32(order.RestaurantID), uint32(item.MenuItemID))
 		if err != nil {
 			return err
 		}
@@ -53,7 +53,7 @@ func (o orderService) CreateOrder(ctx context.Context, customerID int, restauran
 		return err
 	} else {
 		event := kafka.OrderEvent{
-			EventName:    "order_created",
+			EventName:    OrderCreatedEvent,
 			OrderID:      order.ID,
 			RestaurantID: order.RestaurantID,
 		}

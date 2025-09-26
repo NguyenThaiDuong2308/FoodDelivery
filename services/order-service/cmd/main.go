@@ -1,8 +1,8 @@
 package main
 
 import (
+	"github.com/gin-gonic/gin"
 	"log"
-	"net/http"
 	"order-service/api/route"
 	"order-service/config"
 	"order-service/external"
@@ -11,9 +11,6 @@ import (
 	"order-service/internal/handler"
 	"order-service/internal/repository"
 	"order-service/internal/service"
-	"time"
-
-	"github.com/gin-gonic/gin"
 )
 
 func main() {
@@ -24,10 +21,6 @@ func main() {
 		log.Fatal(err)
 	}
 	orderRepo := repository.NewOrderRepository(db)
-	client := &http.Client{
-		Timeout: time.Second * 5,
-	}
-	restaurantClient := external.NewRestaurantClient(client)
 	kafkaProducer := kafka.NewKafka(cfg)
 	kafkaProducer.ConnectProducer()
 	defer func() {
@@ -35,6 +28,11 @@ func main() {
 			log.Fatal(err)
 		}
 	}()
+	grpcConn, err := external.StartGrpcClient(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	restaurantClient := external.NewRestaurantClient(grpcConn)
 	orderService := service.NewOrderService(orderRepo, restaurantClient, kafkaProducer)
 	orderHandler := handler.NewOrderHandler(orderService)
 	r := gin.Default()
