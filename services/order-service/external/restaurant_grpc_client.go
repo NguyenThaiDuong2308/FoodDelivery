@@ -2,14 +2,19 @@ package external
 
 import (
 	"context"
+	"fmt"
+	"log"
+	"order-service/config"
+	"order-service/proto/pb"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"order-service/config"
-	"proto/pb"
 )
 
 func StartGrpcClient(cfg *config.Config) (client pb.RestaurantServiceClient, err error) {
-	conn, err := grpc.NewClient(cfg.GRPCServerPort, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	address := fmt.Sprintf("restaurant-service:%s", cfg.GRPCServerPort)
+	log.Println(address)
+	conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}
@@ -30,12 +35,15 @@ func NewRestaurantClient(client pb.RestaurantServiceClient) RestaurantClient {
 }
 
 func (c *restaurantClient) GetRestaurantInfoByID(ctx context.Context, id uint32) (*pb.GetRestaurantInfoByIDResponse, error) {
+	log.Println("Starting find Restaurant Info")
 	resp, err := c.client.GetRestaurantInfoByID(ctx, &pb.GetRestaurantInfoByIDRequest{
 		RestaurantId: id,
 	})
 	if err != nil {
+		log.Println("Can't find restaurant info because:", err)
 		return nil, err
 	}
+	log.Println("Find Restaurant Info")
 	return resp, nil
 }
 

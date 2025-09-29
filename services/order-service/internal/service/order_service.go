@@ -24,6 +24,7 @@ type orderService struct {
 }
 
 const OrderCreatedEvent = "order_created"
+const CreatedOrderStatus = "created"
 
 func (o orderService) CreateOrder(ctx context.Context, customerID int, restaurantID int, orderItems []models.OrderItem) error {
 	var order models.Order
@@ -48,7 +49,7 @@ func (o orderService) CreateOrder(ctx context.Context, customerID int, restauran
 		}
 		order.TotalPrice += menuItem.Price * float64(item.Quantity)
 	}
-	order.Status = "created"
+	order.Status = CreatedOrderStatus
 	if err := o.orderRepo.CreateOrder(ctx, &order); err != nil {
 		return err
 	} else {

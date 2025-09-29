@@ -9,7 +9,6 @@ require (
 	google.golang.org/grpc v1.75.1
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/gorm v1.30.1
-	proto v0.0.0-00010101000000-000000000000
 )
 
 require (
@@ -53,4 +52,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace proto => ../../proto
+

@@ -47,7 +47,16 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"user": user})
+	c.JSON(http.StatusOK, gin.H{
+		"user": gin.H{
+			"id":           user.ID,
+			"email":        user.Email,
+			"name":         user.Name,
+			"phone_number": user.PhoneNumber,
+			"address":      user.Address,
+			"role":         user.Role,
+		},
+	})
 }
 
 type LoginRequest struct {

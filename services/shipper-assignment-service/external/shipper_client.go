@@ -20,7 +20,7 @@ func NewShipperStatusClient(client *http.Client) ShipperStatusClient {
 }
 
 func (s *shipperStatusClient) UpdateShipperStatus(ctx context.Context, status string, shipperID int) error {
-	url := fmt.Sprintf("http://shipper-service:8002/shipper/%d", shipperID)
+	url := fmt.Sprintf("http://shipper-service:8082/shipper/%d", shipperID)
 	body := map[string]string{
 		"status": status,
 	}

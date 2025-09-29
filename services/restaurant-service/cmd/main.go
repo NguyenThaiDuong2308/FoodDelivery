@@ -2,13 +2,10 @@ package main
 
 import (
 	"context"
-	"github.com/gin-gonic/gin"
-	"google.golang.org/grpc"
 	"log"
 	"net"
 	"os"
 	"os/signal"
-	"proto/pb"
 	"restaurant-service/api/route"
 	"restaurant-service/config"
 	"restaurant-service/infrastructure/databases"
@@ -18,7 +15,11 @@ import (
 	"restaurant-service/internal/handler/rest"
 	"restaurant-service/internal/repository"
 	"restaurant-service/internal/service"
+	"restaurant-service/proto/pb"
 	"syscall"
+
+	"github.com/gin-gonic/gin"
+	"google.golang.org/grpc"
 )
 
 func main() {
@@ -57,7 +58,7 @@ func main() {
 			log.Fatal(err)
 		}
 	}()
-	grpcListener, err := net.Listen("tcp", ":"+cfg.ServerPort)
+	grpcListener, err := net.Listen("tcp", ":"+cfg.GRPCPort)
 	if err != nil {
 		log.Fatal("Faled to listen gRPC port: %v", err)
 	}
@@ -66,7 +67,7 @@ func main() {
 
 	pb.RegisterRestaurantServiceServer(grpcServer, grpcHandler)
 	go func() {
-		log.Printf("gRPC server started on %s", cfg.ServerPort)
+		log.Printf("gRPC server started on %s", cfg.GRPCPort)
 		if err := grpcServer.Serve(grpcListener); err != nil {
 			log.Fatal(err)
 		}

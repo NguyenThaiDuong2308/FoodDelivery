@@ -103,6 +103,7 @@ services:
       GRPC_PORT: 50051
     ports:
       - "8081:8081"
+      - "50051:50051"
     depends_on:
       postgres:
         condition: service_healthy
@@ -136,8 +137,8 @@ services:
 
   order-service:
     build:
-      context: .
-      dockerfile: services/order-service/Dockerfile
+      context: ./services/order-service
+      dockerfile: Dockerfile
     environment:
       DB_HOST: postgres
       DB_PORT: 5432
@@ -148,7 +149,7 @@ services:
       KAFKA_BROKERS: kafka:9092
       KAFKA_TOPIC: order.events
       JWT_SECRET: supersecret
-      GRPC_Server_Port: 50051
+      GRPC_SERVER_PORT: 50051
     ports:
       - "8083:8083"
     depends_on:
@@ -167,7 +168,7 @@ services:
       KAFKA_BROKERS: kafka:9092
       KAFKA_TOPIC: order.events
       MAPBOX_TOKEN: pk.eyJ1Ijoibmd1eWVudGhhaWR1b25nIiwiYSI6ImNtZm1kZXQ3ODAwcDgyaXE3MnprZTNnM2sifQ.VRjRwGiuFp342CTc1RXOmQ
-
+      GRPC_SERVER_PORT: 50051
     ports:
       - "8084:8084"
     depends_on:

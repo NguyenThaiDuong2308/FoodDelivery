@@ -16,12 +16,12 @@ type ShipperAssignmentService interface {
 type shipperAssignmentService struct {
 	geoRepo                  repository.GeoOperations
 	locationRepo             repository.LocationRepository
-	restaurantLocationClient external.RestaurantLocationClient
+	restaurantLocationClient external.RestaurantClient
 	mapboxClient             external.MapboxClient
 	shipperStatusClient      external.ShipperStatusClient
 }
 
-func NewShipperAssignmentService(geoRepo repository.GeoOperations, locationRepo repository.LocationRepository, restaurantLocationClient external.RestaurantLocationClient, mapboxClient external.MapboxClient, shipperStatusClient external.ShipperStatusClient) ShipperAssignmentService {
+func NewShipperAssignmentService(geoRepo repository.GeoOperations, locationRepo repository.LocationRepository, restaurantLocationClient external.RestaurantClient, mapboxClient external.MapboxClient, shipperStatusClient external.ShipperStatusClient) ShipperAssignmentService {
 	return &shipperAssignmentService{
 		geoRepo:                  geoRepo,
 		locationRepo:             locationRepo,
@@ -32,22 +32,20 @@ func NewShipperAssignmentService(geoRepo repository.GeoOperations, locationRepo 
 }
 
 func (s *shipperAssignmentService) AssignNearestShipper(ctx context.Context, event *models.OrderEvent) (*models.Assignment, error) {
-	restaurantLocation, err := s.restaurantLocationClient.GetRestaurantLocation(ctx, event.RestaurantID)
+	restaurantLocation, err := s.restaurantLocationClient.GetRestaurantLocationByID(ctx, uint32(event.RestaurantID))
+	log.Println("location: ", restaurantLocation)
 	if err != nil {
 		return nil, err
 	}
-	log.Println("successful get restaurant location")
 	restaurantCoord, err := s.mapboxClient.ConvertCoordinate(restaurantLocation)
 	if err != nil {
 		return nil, err
 	}
-	log.Println("successful get coordinate")
 	var result models.Assignment
 	shipperID, err := s.geoRepo.FindNearestShipper(ctx, restaurantCoord, 100)
 	if err != nil {
 		return nil, err
 	}
-	log.Println("successful get shipper location")
 	result.ShipperID = shipperID
 	result.OrderID = event.OrderID
 	log.Println(shipperID)
@@ -55,7 +53,6 @@ func (s *shipperAssignmentService) AssignNearestShipper(ctx context.Context, eve
 	if err != nil {
 		return nil, err
 	}
-	log.Println("successful get shipper location")
 	result.Distance, err = s.mapboxClient.CalculateDistance(restaurantCoord, shipperCoord)
 	if err != nil {
 		log.Println(err)

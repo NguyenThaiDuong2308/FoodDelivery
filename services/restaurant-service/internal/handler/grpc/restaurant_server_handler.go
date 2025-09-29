@@ -2,8 +2,8 @@ package grpc
 
 import (
 	"context"
-	"proto/pb"
 	"restaurant-service/internal/service"
+	"restaurant-service/proto/pb"
 )
 
 type RestaurantServiceServer struct {

@@ -14,6 +14,7 @@ func SetupRoutes(
 ) {
 	restaurantRoute := r.Group("/restaurant")
 	restaurantRoute.POST("", middlewares.AuthMiddleware(), restaurantHandler.CreateRestaurant)
+	restaurantRoute.DELETE("/:restaurant_id")
 	restaurantRoute.GET("/:restaurant_id", restaurantHandler.GetRestaurantInfoByID)
 	restaurantRoute.PUT("/:restaurant_id", middlewares.AuthMiddleware(), restaurantHandler.UpdateRestaurant)
 	restaurantRoute.GET("", restaurantHandler.GetRestaurantList)

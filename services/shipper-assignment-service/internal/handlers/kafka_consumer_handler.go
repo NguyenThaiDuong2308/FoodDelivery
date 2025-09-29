@@ -23,6 +23,8 @@ func NewKafkaConsumerHandler(service service.ShipperAssignmentService, reader *k
 	}
 }
 
+const OrderCreatedEvent = "order_created"
+
 func (h *KafkaConsumerHandler) StartConsume(ctx context.Context) (*models.Assignment, error) {
 	for {
 		msg, err := h.reader.FetchMessage(ctx)
@@ -43,17 +45,23 @@ func (h *KafkaConsumerHandler) StartConsume(ctx context.Context) (*models.Assign
 			log.Println(err)
 			continue
 		}
-		if receivedMessage.EventName == "order_created" {
+		if receivedMessage.EventName == OrderCreatedEvent {
 			event := models.OrderEvent{
 				EventName:    receivedMessage.EventName,
 				OrderID:      receivedMessage.OrderID,
 				RestaurantID: receivedMessage.RestaurantID,
 			}
+			log.Println(event)
 			result, err := h.service.AssignNearestShipper(ctx, &event)
 			if err != nil {
 				log.Println(err)
 				continue
 			}
+			log.Println("successful to handle message", result)
+			//produceErr := h.produceShipperAssignedEvent(ctx, result)
+			//if produceErr != nil {
+			//	log.Println("Error producing shipper_assigned event:", produceErr)
+			//}
 			return result, nil
 		}
 		if err := h.reader.CommitMessages(ctx, msg); err != nil {
