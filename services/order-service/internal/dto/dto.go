@@ -17,7 +17,11 @@ type OrderItemResponse struct {
 	Quantity   int     `json:"quantity"`
 	UnitPrice  float64 `json:"unit_price"`
 }
-
+type AssignShipperOrderRequest struct {
+	OrderID   uint    `json:"order_id" binding:"required"`
+	ShipperID int     `json:"shipper_id" binding:"required"`
+	Distance  float64 `json:"distance" binding:"required"`
+}
 type OrderResponse struct {
 	ID uint `json:"id"`
 

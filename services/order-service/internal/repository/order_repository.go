@@ -12,6 +12,7 @@ type OrderRepository interface {
 	GetOrderByID(ctx context.Context, id uint) (*models.Order, error)
 	GetOrderByCustomerID(ctx context.Context, customerID int) (*[]models.Order, error)
 	UpdateOrderStatus(ctx context.Context, id uint, status string) error
+	AssignShipperOrder(ctx context.Context, order *models.Order) error
 }
 
 type orderRepository struct {
@@ -20,6 +21,11 @@ type orderRepository struct {
 
 func NewOrderRepository(db *gorm.DB) OrderRepository {
 	return &orderRepository{db: db}
+}
+
+func (r *orderRepository) AssignShipperOrder(ctx context.Context, order *models.Order) error {
+	result := r.db.WithContext(ctx).Save(order)
+	return result.Error
 }
 
 func (r *orderRepository) CreateOrder(ctx context.Context, order *models.Order) error {

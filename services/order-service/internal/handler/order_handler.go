@@ -70,7 +70,6 @@ func (o *OrderHandler) GetOrderByID(c *gin.Context) {
 				OrderID:    item.OrderID,
 				MenuItemID: item.MenuItemID,
 				Quantity:   item.Quantity,
-				UnitPrice:  item.UnitPrice,
 			})
 		}
 		orderResp := dto.OrderResponse{
@@ -110,7 +109,6 @@ func (o *OrderHandler) GetOrderByCustomerID(c *gin.Context) {
 				OrderID:    item.OrderID,
 				MenuItemID: item.MenuItemID,
 				Quantity:   item.Quantity,
-				UnitPrice:  item.UnitPrice,
 			})
 		}
 		orderResponses = append(orderResponses, dto.OrderResponse{

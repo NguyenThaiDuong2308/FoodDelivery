@@ -35,20 +35,20 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	//kafkaProducer := kafka.NewKafkaProducer(cfg)
-	//kafkaProducer.ConnectProducer()
-	//defer func() {
-	//	if err := kafkaProducer.Close(); err != nil {
-	//		log.Fatal(err)
-	//	}
-	//}()
+	kafkaProducer := kafka.NewKafkaProducer(cfg)
+	kafkaProducer.ConnectProducer()
+	defer func() {
+		if err := kafkaProducer.Close(); err != nil {
+			log.Fatal(err)
+		}
+	}()
 	shipperAssignmentService := service.NewShipperAssignmentService(geoRepo, locationRepo, restaurantLocationClient, mapboxClient, shipperStatusClient)
 	kafkaConsumer := kafka.NewKafka(cfg)
 	reader := kafkaConsumer.ConnectConsumer()
-	consumerHandler := handlers.NewKafkaConsumerHandler(shipperAssignmentService, reader)
+	consumerHandler := handlers.NewKafkaConsumerHandler(shipperAssignmentService, reader, kafkaProducer)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	_, err = consumerHandler.StartConsume(ctx)
+	err = consumerHandler.StartConsume(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}

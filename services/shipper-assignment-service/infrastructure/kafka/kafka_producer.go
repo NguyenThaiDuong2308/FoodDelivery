@@ -9,9 +9,10 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
-type OrderEvent struct {
+type AssignEvent struct {
 	EventName string  `json:"event_name"`
-	ShipperID uint    `json:"shipper_id"`
+	OrderID   uint    `json:"order_id"`
+	ShipperID int     `json:"shipper_id"`
 	Distance  float64 `json:"distance"`
 }
 
@@ -24,7 +25,7 @@ type KafkaProducer struct {
 func NewKafkaProducer(cfg *config.Config) *KafkaProducer {
 	return &KafkaProducer{
 		brokers: cfg.KafkaBrokers,
-		topic:   cfg.KafkaTopic,
+		topic:   cfg.KafkaProduceTopic,
 	}
 }
 
@@ -39,7 +40,7 @@ func (k *KafkaProducer) ConnectProducer() *kafka.Writer {
 	return k.writer
 }
 
-func (k *KafkaProducer) PublishOrderEvent(ctx context.Context, event OrderEvent) error {
+func (k *KafkaProducer) PublishAssignEvent(ctx context.Context, event AssignEvent) error {
 	data, err := json.Marshal(event)
 	log.Println(string(data))
 	if err != nil {

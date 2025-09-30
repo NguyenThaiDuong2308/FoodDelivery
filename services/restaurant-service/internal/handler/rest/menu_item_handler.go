@@ -54,7 +54,7 @@ func (h *MenuItemHandler) CreateMenuItem(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
-	if restaurant.UserID != userID {
+	if restaurant.ManagerID != userID {
 		c.JSON(http.StatusUnauthorized, gin.H{"message": "Can't add menu item for other restaurant"})
 		return
 	}
@@ -106,7 +106,7 @@ func (h *MenuItemHandler) UpdateMenuItem(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
-	if restaurant.UserID != userID {
+	if restaurant.ManagerID != userID {
 		c.JSON(http.StatusUnauthorized, gin.H{"message": "Can't update menu item for other restaurant"})
 		return
 	}
@@ -153,7 +153,7 @@ func (h *MenuItemHandler) DeleteMenuItem(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
-	if restaurant.UserID != userID {
+	if restaurant.ManagerID != userID {
 		c.JSON(http.StatusUnauthorized, gin.H{"message": "Can't delete menu item for other restaurant"})
 		return
 	}

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	kafka2 "shipper-assignment-service/infrastructure/kafka"
 	"shipper-assignment-service/internal/models"
 	"shipper-assignment-service/internal/service"
 
@@ -14,24 +15,27 @@ import (
 type KafkaConsumerHandler struct {
 	service service.ShipperAssignmentService
 	reader  *kafka.Reader
+	writer  *kafka2.KafkaProducer
 }
 
-func NewKafkaConsumerHandler(service service.ShipperAssignmentService, reader *kafka.Reader) *KafkaConsumerHandler {
+func NewKafkaConsumerHandler(service service.ShipperAssignmentService, reader *kafka.Reader, writer *kafka2.KafkaProducer) *KafkaConsumerHandler {
 	return &KafkaConsumerHandler{
 		service: service,
 		reader:  reader,
+		writer:  writer,
 	}
 }
 
 const OrderCreatedEvent = "order_created"
+const AssignShipperEvent = "assign_shipper"
 
-func (h *KafkaConsumerHandler) StartConsume(ctx context.Context) (*models.Assignment, error) {
+func (h *KafkaConsumerHandler) StartConsume(ctx context.Context) error {
 	for {
 		msg, err := h.reader.FetchMessage(ctx)
 		if err != nil {
 			if errors.Is(err, context.Canceled) {
 				log.Printf("Error fetching message: %s\n", err)
-				return nil, ctx.Err()
+				return ctx.Err()
 			}
 			log.Println(err)
 			continue
@@ -58,11 +62,17 @@ func (h *KafkaConsumerHandler) StartConsume(ctx context.Context) (*models.Assign
 				continue
 			}
 			log.Println("successful to handle message", result)
-			//produceErr := h.produceShipperAssignedEvent(ctx, result)
-			//if produceErr != nil {
-			//	log.Println("Error producing shipper_assigned event:", produceErr)
-			//}
-			return result, nil
+			assignEvent := kafka2.AssignEvent{
+				EventName: AssignShipperEvent,
+				OrderID:   result.OrderID,
+				ShipperID: result.ShipperID,
+				Distance:  result.Distance,
+			}
+			log.Println("assign event:", assignEvent)
+			produceErr := h.writer.PublishAssignEvent(ctx, assignEvent)
+			if produceErr != nil {
+				log.Println("Error producing shipper_assigned event:", produceErr)
+			}
 		}
 		if err := h.reader.CommitMessages(ctx, msg); err != nil {
 			log.Printf("Error committing message: %s\n", err)

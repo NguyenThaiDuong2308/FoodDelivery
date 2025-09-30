@@ -23,7 +23,7 @@ type KafkaProducer struct {
 func NewKafka(cfg *config.Config) *KafkaProducer {
 	return &KafkaProducer{
 		brokers: cfg.KafkaBrokers,
-		topic:   cfg.KafkaTopic,
+		topic:   cfg.KafkaProduceTopic,
 	}
 }
 

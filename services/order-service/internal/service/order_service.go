@@ -6,6 +6,7 @@ import (
 	"log"
 	"order-service/external"
 	"order-service/infrastructure/kafka"
+	"order-service/internal/dto"
 	"order-service/internal/models"
 	"order-service/internal/repository"
 )
@@ -15,6 +16,7 @@ type OrderService interface {
 	GetOrderByID(ctx context.Context, id uint) (*models.Order, error)
 	GetOrderByCustomerID(ctx context.Context, customerID int) (*[]models.Order, error)
 	UpdateOrderStatus(ctx context.Context, id uint, status string) error
+	AssignShipperOrder(ctx context.Context, request dto.AssignShipperOrderRequest) error
 }
 
 type orderService struct {
@@ -25,13 +27,15 @@ type orderService struct {
 
 const OrderCreatedEvent = "order_created"
 const CreatedOrderStatus = "created"
+const CanceledOrderStatus = "canceled"
+const DeliveringOrderStatus = "delivering"
 
-func (o orderService) CreateOrder(ctx context.Context, customerID int, restaurantID int, orderItems []models.OrderItem) error {
+func (o *orderService) CreateOrder(ctx context.Context, customerID int, restaurantID int, orderItems []models.OrderItem) error {
 	var order models.Order
 	order.CustomerID = customerID
 	order.RestaurantID = restaurantID
 	order.OrderItems = orderItems
-	order.TotalPrice = 0
+	order.ItemsPrice = 0
 	_, err := o.restaurantClient.GetRestaurantInfoByID(ctx, uint32(order.RestaurantID))
 	if err != nil {
 		return errors.New("Restaurant not found")
@@ -47,7 +51,7 @@ func (o orderService) CreateOrder(ctx context.Context, customerID int, restauran
 		if menuItem.Available == false {
 			return errors.New("MenuItem not available")
 		}
-		order.TotalPrice += menuItem.Price * float64(item.Quantity)
+		order.ItemsPrice += menuItem.Price * float64(item.Quantity)
 	}
 	order.Status = CreatedOrderStatus
 	if err := o.orderRepo.CreateOrder(ctx, &order); err != nil {
@@ -66,16 +70,35 @@ func (o orderService) CreateOrder(ctx context.Context, customerID int, restauran
 	}
 }
 
-func (o orderService) GetOrderByID(ctx context.Context, id uint) (*models.Order, error) {
+func (o *orderService) AssignShipperOrder(ctx context.Context, request dto.AssignShipperOrderRequest) error {
+	order, err := o.orderRepo.GetOrderByID(ctx, request.OrderID)
+	if err != nil {
+		return err
+	}
+	if request.ShipperID == 0 {
+		order.ShipperID = 0
+		order.Status = CanceledOrderStatus
+		order.DeliveryPrice = 0
+		order.TotalPrice = order.DeliveryPrice + order.ItemsPrice
+		return o.orderRepo.AssignShipperOrder(ctx, order)
+	}
+	order.ShipperID = request.ShipperID
+	order.Status = DeliveringOrderStatus
+	order.DeliveryPrice = request.Distance * 5
+	order.TotalPrice = order.DeliveryPrice + order.ItemsPrice
+	return o.orderRepo.AssignShipperOrder(ctx, order)
+}
+
+func (o *orderService) GetOrderByID(ctx context.Context, id uint) (*models.Order, error) {
 
 	return o.orderRepo.GetOrderByID(ctx, id)
 }
 
-func (o orderService) GetOrderByCustomerID(ctx context.Context, customerID int) (*[]models.Order, error) {
+func (o *orderService) GetOrderByCustomerID(ctx context.Context, customerID int) (*[]models.Order, error) {
 	return o.orderRepo.GetOrderByCustomerID(ctx, customerID)
 }
 
-func (o orderService) UpdateOrderStatus(ctx context.Context, id uint, status string) error {
+func (o *orderService) UpdateOrderStatus(ctx context.Context, id uint, status string) error {
 	return o.orderRepo.UpdateOrderStatus(ctx, id, status)
 }
 

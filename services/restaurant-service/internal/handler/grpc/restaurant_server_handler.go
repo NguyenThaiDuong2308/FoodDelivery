@@ -25,9 +25,14 @@ func (r *RestaurantServiceServer) GetRestaurantInfoByID(ctx context.Context, req
 		return nil, err
 	}
 	return &pb.GetRestaurantInfoByIDResponse{
-		Id:     uint32(restaurant.ID),
-		UserId: int32(restaurant.UserID),
-		Status: restaurant.Status,
+		Id:          uint32(restaurant.ID),
+		UserId:      int32(restaurant.ManagerID),
+		Name:        restaurant.Name,
+		Description: restaurant.Description,
+		Address:     restaurant.Address,
+		PhoneNumber: restaurant.PhoneNumber,
+		Email:       restaurant.Email,
+		Status:      restaurant.Status,
 	}, nil
 }
 

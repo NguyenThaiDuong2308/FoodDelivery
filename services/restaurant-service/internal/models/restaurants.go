@@ -2,7 +2,7 @@ package models
 
 type Restaurant struct {
 	ID          uint       `json:"id" gorm:"primaryKey;autoIncrement"`
-	UserID      uint       `json:"user_id" gorm:"not null"`
+	ManagerID   uint       `json:"manager_id" gorm:"not null"`
 	Name        string     `json:"name" gorm:"type:varchar(255);not null"`
 	Description string     `json:"description" gorm:"type:text"`
 	Address     string     `json:"address" gorm:"type:varchar(255);not null"`

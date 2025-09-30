@@ -12,7 +12,7 @@ CREATE TABLE users
     role         VARCHAR        NOT NULL CHECK (role in ('customer', 'restaurant_admin', 'shipper', 'admin'))
 );
 INSERT INTO users(email, name, phone_number, address, password, role)
-VALUES ('admin@gmail.com','Admin user', '0123456789', '22 Ao Sen, Ha Dong, Ha Noi','$2a$14$3FBsf/pwa9FiE.8h5VkzKu372XGvWdkjtys9osw2Dk0XrdfxAUY0K','admin');
+VALUES ('admin@gmail.com','Admin user', '0123456789', '22 Ao Sen, Ha Dong, Ha Noi','$2a$14$ib9Dfszxj4n9QfNpBotLxOabEM9P5usj49z1zVjTvYEC2HfVhPxeK','admin');
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE TABLE password_reset_tokens(

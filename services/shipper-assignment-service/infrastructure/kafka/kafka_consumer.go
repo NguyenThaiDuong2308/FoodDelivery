@@ -18,7 +18,7 @@ func NewKafka(cfg *config.Config) *KafkaConsumer {
 	return &KafkaConsumer{
 		brokers: cfg.KafkaBrokers,
 		group:   cfg.KafkaGroupID,
-		topic:   cfg.KafkaTopic,
+		topic:   cfg.KafkaConsumeTopic,
 	}
 }
 

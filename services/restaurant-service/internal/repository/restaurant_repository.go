@@ -14,7 +14,7 @@ type RestaurantRepository interface {
 	GetRestaurantList(ctx context.Context) (*[]models.Restaurant, error)
 	GetOpenRestaurantList(ctx context.Context) (*[]models.Restaurant, error)
 	DeleteRestaurant(ctx context.Context, id uint) error
-	GetRestaurantByUserID(ctx context.Context, userID int) (*models.Restaurant, error)
+	GetRestaurantByManagerID(ctx context.Context, managerID int) (*models.Restaurant, error)
 }
 
 type restaurantRepository struct {
@@ -81,9 +81,9 @@ func (r *restaurantRepository) DeleteRestaurant(ctx context.Context, id uint) er
 	return nil
 }
 
-func (r *restaurantRepository) GetRestaurantByUserID(ctx context.Context, userID int) (*models.Restaurant, error) {
+func (r *restaurantRepository) GetRestaurantByManagerID(ctx context.Context, managerID int) (*models.Restaurant, error) {
 	var restaurant models.Restaurant
-	result := r.db.WithContext(ctx).Model(models.Restaurant{}).Where("user_id = ?", userID).First(&restaurant)
+	result := r.db.WithContext(ctx).Model(models.Restaurant{}).Where("manager_id = ?", managerID).First(&restaurant)
 	if result.Error != nil {
 		return nil, result.Error
 	}

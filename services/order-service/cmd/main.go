@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/gin-gonic/gin"
+	"context"
 	"log"
 	"order-service/api/route"
 	"order-service/config"
@@ -11,6 +11,8 @@ import (
 	"order-service/internal/handler"
 	"order-service/internal/repository"
 	"order-service/internal/service"
+
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
@@ -34,7 +36,17 @@ func main() {
 	}
 	restaurantClient := external.NewRestaurantClient(grpcConn)
 	orderService := service.NewOrderService(orderRepo, restaurantClient, kafkaProducer)
+	kafkaConsumer := kafka.NewKafkaConsumer(cfg)
+	reader := kafkaConsumer.ConnectConsumer()
 	orderHandler := handler.NewOrderHandler(orderService)
+	consumerHandler := handler.NewKafkaConsumer(orderService, reader)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		if err := consumerHandler.StartConsume(ctx); err != nil {
+			log.Fatal(err)
+		}
+	}()
 	r := gin.Default()
 	route.SetupRoutes(r, orderHandler)
 	if err := r.Run(":" + cfg.ServerPort); err != nil {

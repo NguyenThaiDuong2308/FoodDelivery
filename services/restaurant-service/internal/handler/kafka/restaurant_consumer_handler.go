@@ -43,7 +43,7 @@ func (h *KafkaConsumerHandler) StartConsume(ctx context.Context) error {
 			continue
 		}
 		if receivedMessage.EventName == RestaurantDeletedEvent {
-			restaurant, err := h.service.GetRestaurantByUserID(ctx, int(receivedMessage.UserID))
+			restaurant, err := h.service.GetRestaurantByManagerID(ctx, int(receivedMessage.UserID))
 			if err != nil {
 				log.Println(err)
 			}

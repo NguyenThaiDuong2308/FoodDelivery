@@ -51,7 +51,7 @@ func (h *RestaurantHandler) CreateRestaurant(c *gin.Context) {
 		return
 	}
 	restaurant := &models.Restaurant{
-		UserID:      uint(userID),
+		ManagerID:   uint(userID),
 		Name:        req.Name,
 		Description: req.Description,
 		Address:     req.Address,
@@ -81,7 +81,7 @@ func (h *RestaurantHandler) GetRestaurantInfoByID(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"id":           restaurant.ID,
-		"user_id":      restaurant.UserID,
+		"manager_id":   restaurant.ManagerID,
 		"name":         restaurant.Name,
 		"description":  restaurant.Description,
 		"address":      restaurant.Address,
@@ -91,12 +91,17 @@ func (h *RestaurantHandler) GetRestaurantInfoByID(c *gin.Context) {
 	})
 }
 
-type UpdateStatusRequest struct {
-	Status string `json:"status" binding:"required"`
+type UpdateRestaurantRequest struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Address     string `json:"address"`
+	PhoneNumber string `json:"phone_number"`
+	Email       string `json:"email"`
+	Status      string `json:"status" binding:"required"`
 }
 
 func (h *RestaurantHandler) UpdateRestaurant(c *gin.Context) {
-	var req UpdateStatusRequest
+	var req UpdateRestaurantRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -112,7 +117,7 @@ func (h *RestaurantHandler) UpdateRestaurant(c *gin.Context) {
 	}
 	claims := c.MustGet("claims").(jwt.MapClaims)
 	userID := claims["user_id"].(float64)
-	if existingRestaurant.UserID != uint(userID) {
+	if existingRestaurant.ManagerID != uint(userID) {
 		c.JSON(http.StatusUnauthorized, gin.H{"message": "can't change other restaurant status"})
 		return
 	}

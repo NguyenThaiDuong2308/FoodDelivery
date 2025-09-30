@@ -12,7 +12,7 @@ type RestaurantService interface {
 	UpdateRestaurant(ctx context.Context, restaurant *models.Restaurant) error
 	GetRestaurantList(ctx context.Context) (*[]models.Restaurant, error)
 	DeleteRestaurant(ctx context.Context, id uint) error
-	GetRestaurantByUserID(ctx context.Context, userID int) (*models.Restaurant, error)
+	GetRestaurantByManagerID(ctx context.Context, userID int) (*models.Restaurant, error)
 }
 
 type restaurantService struct {
@@ -45,6 +45,6 @@ func (s *restaurantService) DeleteRestaurant(ctx context.Context, id uint) error
 	return s.restaurantRepo.DeleteRestaurant(ctx, id)
 }
 
-func (s *restaurantService) GetRestaurantByUserID(ctx context.Context, userID int) (*models.Restaurant, error) {
-	return s.restaurantRepo.GetRestaurantByUserID(ctx, userID)
+func (s *restaurantService) GetRestaurantByManagerID(ctx context.Context, userID int) (*models.Restaurant, error) {
+	return s.restaurantRepo.GetRestaurantByManagerID(ctx, userID)
 }
