@@ -37,6 +37,8 @@ func main() {
 			log.Fatal(err)
 		}
 	}()
+
+	//userRepo
 	userRepo := repository.NewUserRepository(db)
 	refreshTokenRepo := repository.NewRefreshTokenRepository(redisClient)
 	resetTokenRepo := repository.NewResetTokenRepository(db)
