@@ -43,7 +43,7 @@ func (r *restaurantRepository) GetRestaurantInfoByID(ctx context.Context, id uin
 }
 
 func (r *restaurantRepository) UpdateRestaurant(ctx context.Context, restaurant *models.Restaurant) error {
-	result := r.db.WithContext(ctx).Model(models.Restaurant{}).Save(restaurant)
+	result := r.db.WithContext(ctx).Save(restaurant)
 	if result.Error != nil {
 		return result.Error
 	}

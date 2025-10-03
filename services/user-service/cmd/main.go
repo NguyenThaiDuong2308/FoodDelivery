@@ -39,6 +39,7 @@ func main() {
 	}()
 
 	//userRepo
+	//restaurantRepo
 	userRepo := repository.NewUserRepository(db)
 	refreshTokenRepo := repository.NewRefreshTokenRepository(redisClient)
 	resetTokenRepo := repository.NewResetTokenRepository(db)

@@ -1,0 +1,190 @@
+openapi: 3.0.4
+info:
+  title: Shipper Service API
+  description: API for managing shippers and their locations/status.
+  version: 1.0.0
+servers:
+  - url: http://192.168.237.130:8000
+tags:
+  - name: Shippers
+    description: Operations related to shippers and their live location/status
+components:
+  schemas:
+    Shipper:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 3
+        name:
+          type: string
+          example: "Nguyen Van A"
+        phone_number:
+          type: string
+          example: "0912345678"
+        status:
+          type: string
+          description: Current availability status of the shipper
+          example: "available"
+          enum:
+            - available
+            - unavailable
+            - busy
+        current_location:
+          $ref: "#/components/schemas/Location"
+    ShipperList:
+      type: array
+      items:
+        $ref: "#/components/schemas/Shipper"
+    ShipperStatusUpdate:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          example: "available"
+    Location:
+      type: object
+      properties:
+        latitude:
+          type: number
+          format: double
+          example: 25.867484
+        longitude:
+          type: number
+          format: double
+          example: 104.1231313
+    LocationUpdate:
+      type: object
+      required:
+        - latitude
+        - longitude
+      properties:
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+  responses:
+    NotFound:
+      description: Resource not found
+    BadRequest:
+      description: Bad request
+
+paths:
+  /shipper:
+    get:
+      tags:
+        - Shippers
+      summary: Get list of shippers
+      description: Returns an array of shippers (basic info and optional current location).
+      responses:
+        "200":
+          description: Array of shippers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShipperList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /shipper/{shipperId}:
+    get:
+      tags:
+        - Shippers
+      summary: Get shipper info by ID
+      parameters:
+        - name: shipperId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Shipper details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shipper"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags:
+        - Shippers
+      summary: Update shipper status
+      description: Update the status field of a shipper (e.g., available, busy).
+      parameters:
+        - name: shipperId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        description: New status for the shipper
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShipperStatusUpdate"
+      responses:
+        "200":
+          description: Updated shipper
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shipper"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /shipper/{shipperId}/location:
+    get:
+      tags:
+        - Shippers
+      summary: Get current location of a shipper
+      parameters:
+        - name: shipperId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Current location
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Location"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags:
+        - Shippers
+      summary: Update shipper location
+      description: Update the latitude and longitude of a shipper.
+      parameters:
+        - name: shipperId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocationUpdate"
+      responses:
+        "200":
+          description: Updated location (returns updated Location object)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Location"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"

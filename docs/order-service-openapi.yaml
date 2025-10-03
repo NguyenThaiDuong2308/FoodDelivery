@@ -1,0 +1,192 @@
+openapi: 3.0.4
+info:
+  title: Order Service API
+  description: API for creating, retrieving, and updating customer orders.
+  version: 1.0.0
+servers:
+  - url: http://192.168.237.130:8000
+tags:
+  - name: Orders
+    description: Operations related to orders
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    OrderItem:
+      type: object
+      properties:
+        menu_item_id:
+          type: integer
+          example: 1
+        quantity:
+          type: integer
+          example: 2
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        customer_id:
+          type: integer
+          example: 7
+        restaurant_id:
+          type: integer
+          example: 1
+        status:
+          type: string
+          example: "pending"
+        order_items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+    CreateOrderRequest:
+      type: object
+      required:
+        - customer_id
+        - restaurant_id
+        - order_items
+      properties:
+        customer_id:
+          type: integer
+          example: 7
+        restaurant_id:
+          type: integer
+          example: 1
+        order_items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+    UpdateOrderStatusRequest:
+      type: object
+      required:
+        - order_id
+        - status
+      properties:
+        order_id:
+          type: integer
+          example: 1
+        status:
+          type: string
+          example: "completed"
+  responses:
+    UnauthorizedError:
+      description: Missing or invalid JWT
+    NotFound:
+      description: Resource not found
+    BadRequest:
+      description: Bad request
+
+paths:
+  /order/{orderId}:
+    get:
+      tags:
+        - Orders
+      summary: Get order detail
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Order details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      tags:
+        - Orders
+      summary: Update order status
+      description: Update the status of an order (e.g., completed, cancelled).
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOrderStatusRequest"
+      responses:
+        "200":
+          description: Updated order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /order/customer/{customerId}:
+    get:
+      tags:
+        - Orders
+      summary: Get all orders by customer ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: customerId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of customer orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Order"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /order:
+    post:
+      tags:
+        - Orders
+      summary: Create a new order
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderRequest"
+      responses:
+        "201":
+          description: Order created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"

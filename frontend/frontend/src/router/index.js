@@ -1,0 +1,62 @@
+import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
+
+const router = createRouter({
+    history: createWebHistory(),
+    routes: [
+        {
+            path: '/login',
+            name: 'Login',
+            component: () => import('../views/LoginView.vue')
+        },
+        {
+            path: '/register',
+            name: 'Register',
+            component: () => import('../views/RegisterView.vue')
+        },
+        {
+            path: '/',
+            name: 'Home',
+            component: () => import('../views/HomeView.vue'),
+            meta: { requiresAuth: true }
+        },
+        {
+            path: '/menu/:id',
+            name: 'Menu',
+            component: () => import('../views/MenuView.vue'),
+            meta: { requiresAuth: true }
+        },
+        {
+            path: '/cart',
+            name: 'Cart',
+            component: () => import('../views/CartView.vue'),
+            meta: { requiresAuth: true }
+        },
+        {
+            path: '/orders',
+            name: 'Orders',
+            component: () => import('../views/OrdersView.vue'),
+            meta: { requiresAuth: true }
+        },
+        {
+            path: '/tracking',
+            name: 'Tracking',
+            component: () => import('../views/TrackingView.vue'),
+            meta: { requiresAuth: true }
+        }
+    ]
+})
+
+router.beforeEach((to, from, next) => {
+    const authStore = useAuthStore()
+
+    if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+        next('/login')
+    } else if ((to.name === 'Login' || to.name === 'Register') && authStore.isAuthenticated) {
+        next('/')
+    } else {
+        next()
+    }
+})
+
+export default router
