@@ -18,8 +18,8 @@ export const authService = {
         return response.data
     },
 
-    async getCurrentUser() {
-        const response = await apiClient.get(API_ENDPOINTS.USERS)
+    async getCurrentUser(id) {
+        const response = await apiClient.get(API_ENDPOINTS.USER_BY_ID(id))
         return response.data
     }
 }

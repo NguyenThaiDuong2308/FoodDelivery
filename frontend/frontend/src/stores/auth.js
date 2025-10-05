@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { authService } from '../services/auth.service'
-
+import { jwtDecode }from 'jwt-decode';
+import apiClient from "@/services/api.service.js";
 export const useAuthStore = defineStore('auth', () => {
     const user = ref(null)
     const token = ref(null)
@@ -24,9 +25,17 @@ export const useAuthStore = defineStore('auth', () => {
 
     async function login(credentials) {
         const data = await authService.login(credentials)
-      //  const users = await authService.getCurrentUser()
-        if (users.length > 0) {
-            setAuth(users[0], data.accessToken)
+        const accessToken = data.accessToken
+        console.log(accessToken)
+        const decoded = jwtDecode(accessToken)
+        console.log(decoded)
+        const userId = decoded.user_id
+        console.log(userId)
+
+        apiClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`
+        const currentUser = await authService.getCurrentUser(userId)
+        if(currentUser){
+            setAuth(currentUser, accessToken)
         }
         console.log("login successful:", data)
         return data
