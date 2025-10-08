@@ -15,7 +15,9 @@
             type="email"
             placeholder="Email"
             class="input"
+            @blur="validateField('email')"
         />
+        <p v-if="errors.email" class="error-text">{{ errors.email }}</p>
       </div>
 
       <div class="form-group">
@@ -24,9 +26,14 @@
             type="password"
             placeholder="Password"
             class="input"
+            @blur="validateField('password')"
         />
+        <p v-if="errors.password" class="error-text">{{ errors.password }}</p>
       </div>
 
+      <div class="forgot-link">
+        <router-link to="/forgot-password">Forgot your password?</router-link>
+      </div>
       <button @click="handleLogin" class="btn btn-primary" :disabled="loading">
         {{ loading ? 'Signing in...' : 'Sign In' }}
       </button>
@@ -52,16 +59,50 @@ const form = ref({
   password: ''
 })
 
+const errors = ref({
+      email: '',
+      password: '',
+    }
+)
 const loading = ref(false)
 
+const validateField = (field) => {
+  if (field === 'email') {
+    if (!form.value.email) {
+      errors.value.email = 'Email is required'
+    } else if (!/^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/.test(form.value.email)) {
+      errors.value.email = 'Invalid email format'
+    } else {
+      errors.value.email = ''
+    }
+  }
+
+  if (field === 'password') {
+    if (!form.value.password) {
+      errors.value.password = 'Password is required'
+    } else if (form.value.password.length < 8 || form.value.password.length>64) {
+      errors.value.password = 'Password must be at least 8 and no more 64 characters'
+    } else {
+      errors.value.password = ''
+    }
+  }
+}
+
+const validateForm = () => {
+  if (!form.value.email || !form.value.password) {
+    return false
+  }
+  return true
+}
+
 const handleLogin = async () => {
+  if (!validateForm()) return
   loading.value = true
   try {
     await authStore.login(form.value)
-    router.push('/')
+    await router.push('/')
   } catch (error) {
-    alert('Login failed: ' + (error.response?.data?.message || error.message))
-
+    alert('Login failed: Invalid email or password')
   } finally {
     loading.value = false
   }
@@ -143,6 +184,22 @@ const handleLogin = async () => {
   transition: all 0.2s;
 }
 
+.forgot-link {
+  text-align: right;
+  margin-bottom: 1rem;
+}
+
+.forgot-link a {
+  color: #6b7280;
+  text-decoration: none;
+  font-size: 0.875rem;
+}
+
+.forgot-link a:hover {
+  color: #ea580c;
+  text-decoration: underline;
+}
+
 .btn-primary {
   background: #ea580c;
   color: white;
@@ -169,5 +226,11 @@ const handleLogin = async () => {
 
 .auth-footer a:hover {
   text-decoration: underline;
+}
+
+.error-text {
+  color: red;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
 }
 </style>

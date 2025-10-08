@@ -20,5 +20,10 @@ export const shipperService = {
     async updateStatus(id, status) {
         const response = await apiClient.put(API_ENDPOINTS.SHIPPER_BY_ID(id), { status })
         return response.data
+    },
+
+    async getLocation(id){
+        const response = await apiClient.get(API_ENDPOINTS.SHIPPER_LOCATION(id))
+        return response.data
     }
 }

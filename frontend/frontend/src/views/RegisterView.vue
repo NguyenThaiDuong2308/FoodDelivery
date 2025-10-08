@@ -3,63 +3,110 @@
     <div class="auth-card">
       <h2>Create Account</h2>
 
+      <!-- Name -->
       <div class="form-group">
         <input
             v-model="form.name"
             type="text"
-            placeholder="Full Name"
+            placeholder="Full Name (2-50 characters)"
             class="input"
+            @blur="validateField('name')"
         />
+        <p v-if="errors.name" class="error-text">{{ errors.name }}</p>
       </div>
 
+      <!-- Email -->
       <div class="form-group">
         <input
             v-model="form.email"
             type="email"
-            placeholder="Email"
+            placeholder="Email (example@domain.com)"
             class="input"
+            @blur="validateField('email')"
         />
+        <p v-if="errors.email" class="error-text">{{ errors.email }}</p>
       </div>
 
+      <!-- Phone Number -->
       <div class="form-group">
         <input
             v-model="form.phone_number"
             type="tel"
-            placeholder="Phone Number"
+            placeholder="Phone Number (10 digits)"
             class="input"
+            @blur="validateField('phone_number')"
         />
+        <p v-if="errors.phone_number" class="error-text">{{ errors.phone_number }}</p>
       </div>
 
-      <div class="form-group">
-        <input
-            v-model="form.address"
-            type="text"
-            placeholder="Address"
-            class="input"
-        />
+      <!-- Address fields -->
+      <div class="address-group">
+        <div class="form-group">
+          <select v-model="form.city" @change="onCityChange" class="input">
+            <option value="" disabled>Select City</option>
+            <option v-for="city in cities" :key="city.id" :value="city.name">{{ city.name }}</option>
+          </select>
+          <p v-if="errors.city" class="error-text">{{ errors.city }}</p>
+        </div>
+
+        <div class="form-group">
+          <select v-model="form.district" @change="onDistrictChange" class="input" :disabled="!form.city">
+            <option value="" disabled>Select District</option>
+            <option v-for="district in filteredDistricts" :key="district.id" :value="district.name">{{ district.name }}</option>
+          </select>
+          <p v-if="errors.district" class="error-text">{{ errors.district }}</p>
+        </div>
+
+        <div class="form-group">
+          <select v-model="form.ward" class="input" :disabled="!form.district">
+            <option value="" disabled>Select Ward/Commune</option>
+            <option v-for="ward in filteredWards" :key="ward.id" :value="ward.name">{{ ward.name }}</option>
+          </select>
+          <p v-if="errors.ward" class="error-text">{{ errors.ward }}</p>
+        </div>
+
+        <div class="form-group">
+          <input
+              v-model="form.street"
+              type="text"
+              placeholder="Street/Address Detail"
+              class="input"
+              @blur="validateField('street')"
+          />
+        <p v-if="errors.street" class="error-text">{{ errors.street }}</p>
+        </div>
       </div>
 
+
+      <!-- Password -->
       <div class="form-group">
         <input
             v-model="form.password"
             type="password"
-            placeholder="Password"
+            placeholder="Password (8-64 characters)"
             class="input"
+            @blur="validateField('password')"
         />
+        <p v-if="errors.password" class="error-text">{{ errors.password }}</p>
       </div>
 
+      <!-- Role -->
       <div class="form-group">
-        <select v-model="form.role" class="input">
+        <select v-model="form.role" class="input" @blur="validateField('role')">
+          <option value="">Select Role</option>
           <option value="customer">Customer</option>
           <option value="shipper">Shipper</option>
           <option value="restaurant_admin">Restaurant Admin</option>
         </select>
+        <p v-if="errors.role" class="error-text">{{ errors.role }}</p>
       </div>
 
+      <!-- Submit Button -->
       <button @click="handleRegister" class="btn btn-primary" :disabled="loading">
         {{ loading ? 'Creating Account...' : 'Register' }}
       </button>
 
+      <!-- Footer -->
       <div class="auth-footer">
         <router-link to="/login">Already have an account? Login</router-link>
       </div>
@@ -68,7 +115,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import {computed, ref} from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 
@@ -79,17 +126,270 @@ const form = ref({
   name: '',
   email: '',
   phone_number: '',
-  address: '',
+  city: '',
+  district: '',
+  ward: '',
+  street: '',
   password: '',
-  role: 'customer'
+  role: ''
+})
+
+const errors = ref({
+  name: '',
+  email: '',
+  phone_number: '',
+  city: '',
+  district: '',
+  ward: '',
+  street: '',
+  password: '',
+  role: ''
+})
+
+const cities = ref([
+  {id: 1, name: 'Hà Nội'},
+])
+
+const districts = ref([
+  { id: 1, cityId: 1, name: 'Ba Đình' },
+  { id: 2, cityId: 1, name: 'Cầu Giấy' },
+  { id: 3, cityId: 1, name: 'Hoàn Kiếm' },
+  { id: 4, cityId: 1, name: 'Hai Bà Trưng' },
+  { id: 5, cityId: 1, name: 'Hoàng Mai' },
+  { id: 6, cityId: 1, name: 'Đống Đa' },
+  { id: 7, cityId: 1, name: 'Tây Hồ' },
+  { id: 8, cityId: 1, name: 'Thanh Xuân' },
+  { id: 9, cityId: 1, name: 'Bắc Từ Liêm' },
+  { id: 10, cityId: 1, name: 'Hà Đông' },
+  { id: 11, cityId: 1, name: 'Long Biên' },
+  { id: 12, cityId: 1, name: 'Nam Từ Liêm' },
+])
+
+const wards = ref([
+  // Ba Đình
+  { id: 1, districtId: 1, name: 'Phúc Xá' },
+  { id: 2, districtId: 1, name: 'Trúc Bạch' },
+  { id: 3, districtId: 1, name: 'Vĩnh Phúc' },
+  { id: 4, districtId: 1, name: 'Cống Vị' },
+  { id: 5, districtId: 1, name: 'Liễu Giai' },
+  { id: 6, districtId: 1, name: 'Ngọc Hà' },
+  { id: 7, districtId: 1, name: 'Điện Biên' },
+  { id: 8, districtId: 1, name: 'Đội Cấn' },
+  { id: 9, districtId: 1, name: 'Ngọc Khánh' },
+  { id: 10, districtId: 1, name: 'Kim Mã' },
+  { id: 11, districtId: 1, name: 'Giảng Võ' },
+  { id: 12, districtId: 1, name: 'Quán Thánh' },
+  { id: 13, districtId: 1, name: 'Thành Công' },
+
+  // Cầu Giấy
+  { id: 14, districtId: 2, name: 'Dịch Vọng' },
+  { id: 15, districtId: 2, name: 'Dịch Vọng Hậu' },
+  { id: 16, districtId: 2, name: 'Mai Dịch' },
+  { id: 17, districtId: 2, name: 'Nghĩa Đô' },
+  { id: 18, districtId: 2, name: 'Nghĩa Tân' },
+  { id: 19, districtId: 2, name: 'Quan Hoa' },
+  { id: 20, districtId: 2, name: 'Yên Hòa' },
+  { id: 21, districtId: 2, name: 'Trung Hòa' },
+
+  // Hoàn Kiếm
+  { id: 22, districtId: 3, name: 'Hàng Bạc' },
+  { id: 23, districtId: 3, name: 'Hàng Bồ' },
+  { id: 24, districtId: 3, name: 'Hàng Buồm' },
+  { id: 25, districtId: 3, name: 'Hàng Đào' },
+  { id: 26, districtId: 3, name: 'Hàng Gai' },
+  { id: 27, districtId: 3, name: 'Hàng Mã' },
+  { id: 28, districtId: 3, name: 'Hàng Trống' },
+  { id: 29, districtId: 3, name: 'Cửa Đông' },
+  { id: 30, districtId: 3, name: 'Cửa Nam' },
+  { id: 31, districtId: 3, name: 'Lý Thái Tổ' },
+  { id: 32, districtId: 3, name: 'Phan Chu Trinh' },
+  { id: 33, districtId: 3, name: 'Tràng Tiền' },
+
+  // Hai Bà Trưng
+  { id: 34, districtId: 4, name: 'Bạch Mai' },
+  { id: 35, districtId: 4, name: 'Quỳnh Lôi' },
+  { id: 36, districtId: 4, name: 'Đồng Nhân' },
+  { id: 37, districtId: 4, name: 'Phố Huế' },
+  { id: 38, districtId: 4, name: 'Nguyễn Du' },
+  { id: 39, districtId: 4, name: 'Nguyễn Trung Trực' },
+  { id: 40, districtId: 4, name: 'Trương Định' },
+
+  // Hoàng Mai
+  { id: 41, districtId: 5, name: 'Hoàng Liệt' },
+  { id: 42, districtId: 5, name: 'Định Công' },
+  { id: 43, districtId: 5, name: 'Tân Mai' },
+  { id: 44, districtId: 5, name: 'Thịnh Liệt' },
+  { id: 45, districtId: 5, name: 'Giáp Bát' },
+  { id: 46, districtId: 5, name: 'Mai Động' },
+  { id: 47, districtId: 5, name: 'Lĩnh Nam' },
+  { id: 48, districtId: 5, name: 'Trần Phú' },
+  { id: 49, districtId: 5, name: 'Yên Sở' },
+
+  // Đống Đa
+  { id: 50, districtId: 6, name: 'Ô Chợ Dừa' },
+  { id: 51, districtId: 6, name: 'Láng Hạ' },
+  { id: 52, districtId: 6, name: 'Khâm Thiên' },
+  { id: 53, districtId: 6, name: 'Thổ Quan' },
+  { id: 54, districtId: 6, name: 'Nam Đồng' },
+  { id: 55, districtId: 6, name: 'Trung Liệt' },
+  { id: 56, districtId: 6, name: 'Phương Liên' },
+  { id: 57, districtId: 6, name: 'Phương Mai' },
+  { id: 58, districtId: 6, name: 'Quang Trung' },
+  { id: 59, districtId: 6, name: 'Thịnh Quang' },
+  { id: 60, districtId: 6, name: 'Vĩnh Hồ' },
+
+  // Tây Hồ
+  { id: 61, districtId: 7, name: 'Quảng An' },
+  { id: 62, districtId: 7, name: 'Tây Hồ' },
+  { id: 63, districtId: 7, name: 'Thụy Khuê' },
+  { id: 64, districtId: 7, name: 'Bưởi' },
+  { id: 65, districtId: 7, name: 'Xuân La' },
+  { id: 66, districtId: 7, name: 'Tứ Liên' },
+
+  // Thanh Xuân
+  { id: 67, districtId: 8, name: 'Nhân Chính' },
+  { id: 68, districtId: 8, name: 'Thượng Đình' },
+  { id: 69, districtId: 8, name: 'Khương Mai' },
+  { id: 70, districtId: 8, name: 'Khương Trung' },
+  { id: 71, districtId: 8, name: 'Thanh Xuân Bắc' },
+  { id: 72, districtId: 8, name: 'Thanh Xuân Nam' },
+  { id: 73, districtId: 8, name: 'Thanh Xuân Trung' },
+  { id: 74, districtId: 8, name: 'Hạ Đình' },
+
+  // Bắc Từ Liêm
+  { id: 75, districtId: 9, name: 'Cổ Nhuế 1' },
+  { id: 76, districtId: 9, name: 'Cổ Nhuế 2' },
+  { id: 77, districtId: 9, name: 'Phú Diễn' },
+  { id: 78, districtId: 9, name: 'Xuân Đỉnh' },
+  { id: 79, districtId: 9, name: 'Xuân Tảo' },
+  { id: 80, districtId: 9, name: 'Thụy Phương' },
+  { id: 81, districtId: 9, name: 'Minh Khai' },
+  { id: 82, districtId: 9, name: 'Liên Mạc' },
+
+  // Hà Đông
+  { id: 83, districtId: 10, name: 'Yết Kiêu' },
+  { id: 84, districtId: 10, name: 'Mộ Lao' },
+  { id: 85, districtId: 10, name: 'Phú La' },
+  { id: 86, districtId: 10, name: 'Văn Quán' },
+  { id: 87, districtId: 10, name: 'La Khê' },
+  { id: 88, districtId: 10, name: 'Quang Trung' },
+  { id: 89, districtId: 10, name: 'Dương Nội' },
+
+  // Long Biên
+  { id: 90, districtId: 11, name: 'Bồ Đề' },
+  { id: 91, districtId: 11, name: 'Cự Khối' },
+  { id: 92, districtId: 11, name: 'Giang Biên' },
+  { id: 93, districtId: 11, name: 'Gia Thụy' },
+  { id: 94, districtId: 11, name: 'Ngọc Lâm' },
+  { id: 95, districtId: 11, name: 'Ngọc Thụy' },
+  { id: 96, districtId: 11, name: 'Phúc Lợi' },
+  { id: 97, districtId: 11, name: 'Phúc Đồng' },
+  { id: 98, districtId: 11, name: 'Sài Đồng' },
+  { id: 99, districtId: 11, name: 'Thạch Bàn' },
+  { id: 100, districtId: 11, name: 'Việt Hưng' },
+
+  // Nam Từ Liêm
+  { id: 101, districtId: 12, name: 'Mỹ Đình 1' },
+  { id: 102, districtId: 12, name: 'Mỹ Đình 2' },
+  { id: 103, districtId: 12, name: 'Phú Đô' },
+  { id: 104, districtId: 12, name: 'Phú Mỹ' },
+  { id: 105, districtId: 12, name: 'Trung Văn' },
+  { id: 106, districtId: 12, name: 'Cầu Diễn' },
+  { id: 107, districtId: 12, name: 'Tây Mỗ' },
+  { id: 108, districtId: 12, name: 'Đại Mỗ' }
+]);
+
+const filteredDistricts = computed(() => {
+  return districts.value.filter(d => d.cityId === cities.value.find(c => c.name === form.value.city)?.id)
+})
+
+const filteredWards = computed(() => {
+  return wards.value.filter(w => w.districtId === districts.value.find(d => d.name === form.value.district)?.id)
 })
 
 const loading = ref(false)
 
+//Reset downstream fields
+function onCityChange() {
+  form.value.district = ''
+  form.value.ward = ''
+}
+
+function onDistrictChange() {
+  form.value.ward = ''
+}
+
+// Validate từng field riêng
+const validateField = (field) => {
+  switch(field) {
+    case 'name':
+      if (!form.value.name) errors.value.name = 'Name is required'
+      else if (form.value.name.length < 2 || form.value.name.length > 50) errors.value.name = 'Name must be 2-50 characters'
+      else errors.value.name = ''
+      break
+    case 'email':
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!form.value.email) errors.value.email = 'Email is required'
+      else if (!emailPattern.test(form.value.email)) errors.value.email = 'Invalid email format'
+      else errors.value.email = ''
+      break
+    case 'phone_number':
+      const phonePattern = /^\d{10}$/
+      if (!form.value.phone_number) errors.value.phone_number = 'Phone number is required'
+      else if (!phonePattern.test(form.value.phone_number)) errors.value.phone_number = 'Phone number must be 10 digits'
+      else errors.value.phone_number = ''
+      break
+    case 'city':
+      errors.value.city = form.value.city ? '' : 'City is required'
+      break
+    case 'district':
+      errors.value.district = form.value.district ? '' : 'District is required'
+      break
+    case 'ward':
+      errors.value.ward = form.value.ward ? '' : 'Ward is required'
+      break
+    case 'street':
+      errors.value.street = form.value.street ? '' : 'Street is required'
+      break
+    case 'password':
+      if (!form.value.password) errors.value.password = 'Password is required'
+      else if (form.value.password.length < 8 || form.value.password.length > 64) errors.value.password = 'Password must be 8-64 characters'
+      else errors.value.password = ''
+      break
+    case 'role':
+      errors.value.role = form.value.role ? '' : 'Role is required'
+      break
+  }
+}
+
+// Validate toàn bộ form
+const validateForm = () => {
+  validateField('name')
+  validateField('email')
+  validateField('phone_number')
+  validateField('city')
+  validateField('district')
+  validateField('ward')
+  validateField('street')
+  validateField('password')
+  validateField('role')
+
+  return Object.values(errors.value).every(e => !e)
+}
+
 const handleRegister = async () => {
+  if (!validateForm()) return
+
   loading.value = true
   try {
-    await authStore.register(form.value)
+    const fullAddress = `${form.value.street}, ${form.value.ward}, ${form.value.district}, ${form.value.city}`
+    const payload = { ...form.value, address: fullAddress }
+    delete payload.city
+    delete payload.district
+    delete payload.ward
+    delete payload.street
+
+    await authStore.register(payload)
     alert('Registration successful! Please login.')
     router.push('/login')
   } catch (error) {
@@ -99,6 +399,7 @@ const handleRegister = async () => {
   }
 }
 </script>
+
 
 <style scoped>
 .auth-container {
@@ -182,5 +483,22 @@ const handleRegister = async () => {
 
 .auth-footer a:hover {
   text-decoration: underline;
+}
+
+.address-group {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); /* 2 cột bằng nhau */
+  gap: 1rem; /* khoảng cách giữa các input */
+}
+
+.address-group .form-group {
+  margin-bottom: 0; /* đã có gap nên không cần margin-bottom nữa */
+}
+
+/* Màu đỏ cho lỗi */
+.error-text {
+  color: red;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
 }
 </style>

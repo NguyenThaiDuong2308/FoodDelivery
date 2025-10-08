@@ -11,6 +11,7 @@ export const useRestaurantStore = defineStore('restaurant', () => {
         loading.value = true
         try {
             restaurants.value = await restaurantService.getAll()
+            console.log(restaurants.value)
         } finally {
             loading.value = false
         }

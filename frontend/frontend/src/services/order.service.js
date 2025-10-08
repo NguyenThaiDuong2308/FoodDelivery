@@ -12,6 +12,11 @@ export const orderService = {
         return response.data
     },
 
+    async getOrderDetails(orderID){
+        const response = await apiClient.get(API_ENDPOINTS.ORDER_BY_ID(orderID))
+        return response.data
+    },
+
     async updateStatus(orderId, status) {
         const response = await apiClient.post(API_ENDPOINTS.ORDER_BY_ID(orderId), { status })
         return response.data

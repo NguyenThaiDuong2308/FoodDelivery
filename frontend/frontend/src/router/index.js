@@ -15,6 +15,16 @@ const router = createRouter({
             component: () => import('../views/RegisterView.vue')
         },
         {
+          path: '/forgot-password',
+          name: 'ForgotPassword',
+          component: () => import('../views/ForgotPasswordView.vue')
+        },
+        {
+            path: '/reset-forgot-password',
+            name: 'ResetForgotPassword',
+            component: () => import('../views/ResetForgotPasswordView.vue')
+        },
+        {
             path: '/',
             name: 'Home',
             component: () => import('../views/HomeView.vue'),
@@ -43,6 +53,12 @@ const router = createRouter({
             name: 'Tracking',
             component: () => import('../views/TrackingView.vue'),
             meta: { requiresAuth: true }
+        },
+        {
+            path: '/profile',
+            name: 'Profile',
+            component: () => import('../views/ProfileView.vue'),
+            meta: {requiresAuth: true}
         }
     ]
 })

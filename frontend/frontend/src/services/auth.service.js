@@ -21,5 +21,26 @@ export const authService = {
     async getCurrentUser(id) {
         const response = await apiClient.get(API_ENDPOINTS.USER_BY_ID(id))
         return response.data
+    },
+    async resetPassword(passwordData) {
+        const response = await apiClient.post(API_ENDPOINTS.RESET_PASSWORD, passwordData)
+        return response.data
+    },
+
+    async forgotPassword(email) {
+        const response = await apiClient.post(API_ENDPOINTS.FORGOT_PASSWORD, { email })
+        return response.data
+    },
+
+    async resetForgotPassword(resetData) {
+        const response = await apiClient.post(API_ENDPOINTS.RESET_FORGOT_PASSWORD, resetData)
+        return response.data
+    },
+
+    async refreshAccessToken(refreshToken) {
+        const response = await apiClient.post(API_ENDPOINTS.REFRESH_TOKEN, {
+            refresh_token: refreshToken
+        })
+        return response.data
     }
 }

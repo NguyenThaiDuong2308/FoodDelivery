@@ -174,8 +174,8 @@ func (s *authService) SendResetPasswordEmail(ctx context.Context, email string) 
 	if err := s.resetTokenRepo.CreateResetToken(ctx, &resetToken); err != nil {
 		return err
 	}
-	resetLink := resetToken.Token
-	err = s.mailer.SendResetPasswordEmail(ctx, email, resetLink)
+	token := resetToken.Token
+	err = s.mailer.SendResetPasswordEmail(ctx, email, token)
 	if err != nil {
 		return err
 	}

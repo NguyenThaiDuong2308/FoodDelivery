@@ -22,13 +22,13 @@
             {{ cartStore.itemCount }}
           </span>
         </router-link>
-        <div class="user-menu">
+        <router-link to="/profile" class="user-profile" @click="closeMobile">
           <User :size="20" />
           <span>{{ authStore.user?.name }}</span>
           <button @click="handleLogout" class="logout-btn">
             <LogOut :size="20" />
           </button>
-        </div>
+        </router-link>
       </nav>
 
       <button class="mobile-toggle" @click="mobileMenuOpen = !mobileMenuOpen">
@@ -130,7 +130,7 @@ const closeMobile = () => {
   justify-content: center;
 }
 
-.user-menu {
+.user-profile {
   display: flex;
   align-items: center;
   gap: 0.5rem;
