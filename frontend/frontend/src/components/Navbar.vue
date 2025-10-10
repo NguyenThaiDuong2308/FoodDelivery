@@ -16,6 +16,13 @@
         <router-link to="/tracking" @click="closeMobile">
           <MapPin :size="20" /> Track
         </router-link>
+        <router-link
+            v-if="authStore.user?.role === 'restaurant_admin'"
+            to="/admin/restaurants"
+            @click="closeMobile"
+        >
+          <Settings :size="20" /> Manage Restaurant
+        </router-link>
         <router-link to="/cart" class="cart-link" @click="closeMobile">
           <ShoppingCart :size="24" />
           <span v-if="cartStore.itemCount > 0" class="badge">
@@ -42,7 +49,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Truck, Store, Package, MapPin, ShoppingCart, User, LogOut, Menu, X } from 'lucide-vue-next'
+import { Truck, Store, Package, MapPin, ShoppingCart, User, LogOut, Menu, Settings, X } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth'
 import { useCartStore } from '../stores/cart'
 

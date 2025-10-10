@@ -42,7 +42,7 @@ export const useCartStore = defineStore('cart', () => {
     }
 
     function setRestaurant(id) {
-        restaurantId.value = id
+        restaurantId.value = Number(id)
     }
 
     return {

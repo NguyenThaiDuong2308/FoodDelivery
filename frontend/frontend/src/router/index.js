@@ -31,6 +31,13 @@ const router = createRouter({
             meta: { requiresAuth: true }
         },
         {
+            path: '/admin/restaurants',
+            name: 'RestaurantAdmin',
+            component: () => import('../views/RestaurantAdmin.vue'),
+            meta: {requiresAuth: true, requiresRole: 'restaurant_admin'}
+
+        },
+        {
             path: '/menu/:id',
             name: 'Menu',
             component: () => import('../views/MenuView.vue'),

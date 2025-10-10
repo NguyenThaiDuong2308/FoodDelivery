@@ -99,32 +99,6 @@ export const useUserStore = defineStore('user', () => {
         }
     }
 
-    async function forgotPassword(email) {
-        loading.value = true
-        error.value = null
-        try {
-            await authService.forgotPassword(email)
-        } catch (err) {
-            error.value = err.message
-            throw err
-        } finally {
-            loading.value = false
-        }
-    }
-
-    async function resetForgotPassword(resetData) {
-        loading.value = true
-        error.value = null
-        try {
-            await authService.resetForgotPassword(resetData)
-        } catch (err) {
-            error.value = err.message
-            throw err
-        } finally {
-            loading.value = false
-        }
-    }
-
     function setCurrentUser(user) {
         currentUser.value = user
     }
@@ -148,8 +122,6 @@ export const useUserStore = defineStore('user', () => {
         updateUser,
         deleteUser,
         resetPassword,
-        forgotPassword,
-        resetForgotPassword,
         setCurrentUser,
         clearCurrentUser,
         clearError

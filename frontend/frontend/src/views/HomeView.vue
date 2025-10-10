@@ -8,6 +8,11 @@
         Loading restaurants...
       </div>
 
+      <div v-else-if="restaurantStore.restaurants.length === 0" class="empty-state">
+        <Store :size="64" />
+        <p>No restaurants available</p>
+      </div>
+
       <div v-else class="restaurant-grid">
         <div
             v-for="restaurant in restaurantStore.restaurants"
@@ -20,10 +25,10 @@
           </div>
           <div class="restaurant-info">
             <h3>{{ restaurant.name }}</h3>
-            <p class="description">{{ restaurant.description }}</p>
+            <p class="description">{{ restaurant.description || 'No description' }}</p>
             <p class="address">
               <MapPin :size="16" />
-              {{ restaurant.address }}
+              {{ restaurant.address || 'No address' }}
             </p>
             <div class="status-badge" :class="restaurant.status">
               {{ restaurant.status }}
@@ -72,6 +77,25 @@ const goToMenu = (id) => {
   text-align: center;
   padding: 3rem;
   color: #6b7280;
+  font-size: 1.125rem;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.empty-state svg {
+  color: #d1d5db;
+  margin-bottom: 1rem;
+}
+
+.empty-state p {
+  color: #6b7280;
+  margin: 0;
 }
 
 .restaurant-grid {
@@ -134,6 +158,7 @@ const goToMenu = (id) => {
   border-radius: 9999px;
   font-size: 0.875rem;
   font-weight: 600;
+  text-transform: capitalize;
 }
 
 .status-badge.open {
@@ -144,5 +169,11 @@ const goToMenu = (id) => {
 .status-badge.closed {
   background: #fee2e2;
   color: #991b1b;
+}
+
+@media (max-width: 768px) {
+  .restaurant-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
