@@ -40,13 +40,9 @@
             <span>Subtotal</span>
             <span>${{ cartStore.totalAmount.toFixed(2) }}</span>
           </div>
-          <div class="summary-row">
-            <span>Delivery Fee</span>
-            <span>$5.00</span>
-          </div>
           <div class="summary-row total">
             <span>Total</span>
-            <span>${{ (cartStore.totalAmount + 5).toFixed(2) }}</span>
+            <span>${{ cartStore.totalAmount.toFixed(2) }}</span>
           </div>
           <button @click="placeOrder" class="btn btn-primary" :disabled="loading">
             {{ loading ? 'Placing Order...' : 'Place Order' }}

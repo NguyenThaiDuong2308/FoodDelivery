@@ -130,7 +130,14 @@ func (h *RestaurantHandler) UpdateRestaurant(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"message": existingRestaurant,
+		"id":           existingRestaurant.ID,
+		"manager_id":   existingRestaurant.ManagerID,
+		"name":         existingRestaurant.Name,
+		"description":  existingRestaurant.Description,
+		"address":      existingRestaurant.Address,
+		"phone_number": existingRestaurant.PhoneNumber,
+		"email":        existingRestaurant.Email,
+		"status":       existingRestaurant.Status,
 	})
 }
 

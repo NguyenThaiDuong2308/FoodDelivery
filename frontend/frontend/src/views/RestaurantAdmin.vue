@@ -26,7 +26,7 @@
       </div>
 
       <div v-else class="restaurant-grid">
-        <div v-for="r in restaurantStore.restaurants" :key="r.id" class="restaurant-card">
+        <div v-for="r in userRestaurants" :key="r.id" class="restaurant-card">
           <div class="restaurant-header">
             <div class="avatar">
               <Store :size="32" />
@@ -69,7 +69,7 @@
         </div>
       </div>
 
-      <div v-if="!restaurantStore.loading && restaurantStore.restaurants.length === 0" class="empty-state">
+      <div v-if="!restaurantStore.loading && userRestaurants.length === 0" class="empty-state">
         <Store :size="64" />
         <h3>No restaurants yet</h3>
         <p>Get started by adding your first restaurant</p>
@@ -97,30 +97,30 @@
           </div>
 
           <div class="form-group">
-            <label>Description</label>
-            <textarea v-model="form.description" placeholder="Enter description" class="input textarea" rows="3"></textarea>
+            <label>Description *</label>
+            <textarea v-model="form.description" placeholder="Enter description" class="input textarea" rows="3" required></textarea>
           </div>
 
           <div class="form-group">
-            <label>Address</label>
-            <input v-model="form.address" placeholder="Enter address" class="input" />
+            <label>Address *</label>
+            <input v-model="form.address" placeholder="Enter address" class="input" required />
           </div>
 
           <div class="form-row">
             <div class="form-group">
-              <label>Phone Number</label>
-              <input v-model="form.phone_number" placeholder="Enter phone" class="input" />
+              <label>Phone Number *</label>
+              <input v-model="form.phone_number" placeholder="Enter phone" class="input" required />
             </div>
 
             <div class="form-group">
-              <label>Email</label>
-              <input v-model="form.email" type="email" placeholder="Enter email" class="input" />
+              <label>Email *</label>
+              <input v-model="form.email" type="email" placeholder="Enter email" class="input" required />
             </div>
           </div>
 
           <div class="form-group">
-            <label>Status</label>
-            <select v-model="form.status" class="input">
+            <label>Status *</label>
+            <select v-model="form.status" class="input" required>
               <option value="open">Open</option>
               <option value="closed">Closed</option>
             </select>
@@ -157,8 +157,8 @@
             Add Menu Item
           </button>
 
-          <div v-if="selectedRestaurant.menu_items && selectedRestaurant.menu_items.length > 0" class="menu-list">
-            <div v-for="item in selectedRestaurant.menu_items" :key="item.id" class="menu-item">
+          <div v-if="menuItems.length > 0" class="menu-list">
+            <div v-for="item in menuItems" :key="item.id" class="menu-item">
               <div class="menu-item-icon">
                 <UtensilsCrossed :size="24" />
               </div>
@@ -264,15 +264,18 @@
 import { reactive, ref, onMounted, computed } from 'vue'
 import { Store, MapPin, Phone, Mail, FileText, Menu, Edit, Trash2, Plus, X, UtensilsCrossed, AlertCircle } from 'lucide-vue-next'
 import { useRestaurantStore } from '../stores/restaurant'
+import { useAuthStore } from '../stores/auth'
 import Navbar from '../components/Navbar.vue'
 
 const restaurantStore = useRestaurantStore()
+const authStore = useAuthStore()
 
 const showForm = ref(false)
 const showMenu = ref(false)
 const showMenuItemForm = ref(false)
 const formMode = ref('add') // 'add' | 'edit'
 const menuItemFormMode = ref('add') // 'add' | 'edit'
+const menuItems = ref([])
 
 const form = reactive({
   id: null,
@@ -287,7 +290,6 @@ const form = reactive({
 const selectedRestaurant = reactive({
   id: null,
   name: '',
-  menu_items: []
 })
 
 const menuItemForm = reactive({
@@ -298,25 +300,39 @@ const menuItemForm = reactive({
   available: true
 })
 
+// Filter restaurants owned by current user
+const userRestaurants = computed(() => {
+  if (!authStore.user?.id) return []
+  return restaurantStore.restaurants.filter(r => r.manager_id === authStore.user.id)
+})
+
 // Check if user can create a restaurant (limit: 1 restaurant per user)
 const canCreateRestaurant = computed(() => {
-  return restaurantStore.restaurants.length === 0
+  return userRestaurants.value.length === 0
 })
 
 // ---------- Life cycle ----------
-onMounted(() => {
-  restaurantStore.fetchRestaurants()
+onMounted(async () => {
+  await restaurantStore.fetchRestaurants()
 })
 
 // ---------- Restaurant Actions ----------
 const openForm = (restaurant = null) => {
   if (restaurant) {
     formMode.value = 'edit'
-    Object.assign(form, restaurant)
+    Object.assign(form, {
+      id: restaurant.id,
+      name: restaurant.name,
+      description: restaurant.description,
+      address: restaurant.address,
+      phone_number: restaurant.phone_number,
+      email: restaurant.email,
+      status: restaurant.status
+    })
   } else {
     // Check if user already has a restaurant
     if (!canCreateRestaurant.value) {
-      alert('You already have a restaurant. Each user can only create one restaurant.')
+      showNotification('You already have a restaurant. Each user can only create one restaurant.', 'warning')
       return
     }
     formMode.value = 'add'
@@ -333,39 +349,62 @@ const openForm = (restaurant = null) => {
   showForm.value = true
 }
 
-const closeForm = () => (showForm.value = false)
+const closeForm = () => {
+  showForm.value = false
+}
 
 const submitForm = async () => {
   try {
+    const payload = {
+      name: form.name,
+      description: form.description,
+      address: form.address,
+      phone_number: form.phone_number,
+      email: form.email,
+      status: form.status
+    }
+
     if (formMode.value === 'add') {
       // Double check before creating
       if (!canCreateRestaurant.value) {
-        alert('You already have a restaurant. Each user can only create one restaurant.')
+        showNotification('You already have a restaurant. Each user can only create one restaurant.', 'warning')
         return
       }
-      await restaurantStore.createRestaurant(form)
+      await restaurantStore.createRestaurant(payload)
+      showNotification('✅ Restaurant created successfully!', 'success')
     } else {
-      await restaurantStore.updateRestaurant(form.id, form)
+      await restaurantStore.updateRestaurant(form.id, payload)
+      showNotification('✅ Restaurant updated successfully!', 'success')
     }
     closeForm()
+    await restaurantStore.fetchRestaurants()
   } catch (error) {
-    alert('Failed to save restaurant: ' + error.message)
+    console.error('Failed to save restaurant:', error)
+    showNotification('❌ Failed to save restaurant', 'error')
   }
 }
-
 
 // ---------- Menu Actions ----------
 const openMenu = async (restaurant) => {
   try {
-    await restaurantStore.fetchMenu(restaurant.id)
-    Object.assign(selectedRestaurant, restaurant)
+    Object.assign(selectedRestaurant, {
+      id: restaurant.id,
+      name: restaurant.name
+    })
+
+    // Fetch menu items
+    menuItems.value = await restaurantStore.fetchMenu(restaurant.id)
     showMenu.value = true
   } catch (error) {
-    alert('Failed to load menu: ' + error.message)
+    console.error('Failed to load menu:', error)
+    showNotification('❌ Failed to load menu', 'error')
   }
 }
 
-const closeMenu = () => (showMenu.value = false)
+const closeMenu = () => {
+  showMenu.value = false
+  menuItems.value = []
+}
 
 // ---------- Menu Item Form Actions ----------
 const openMenuItemForm = (item = null) => {
@@ -391,39 +430,68 @@ const openMenuItemForm = (item = null) => {
   showMenuItemForm.value = true
 }
 
-const closeMenuItemForm = () => (showMenuItemForm.value = false)
+const closeMenuItemForm = () => {
+  showMenuItemForm.value = false
+}
 
 const submitMenuItemForm = async () => {
   try {
     const payload = {
       name: menuItemForm.name,
       description: menuItemForm.description,
-      price: menuItemForm.price,
+      price: parseFloat(menuItemForm.price),
       available: menuItemForm.available
     }
 
     if (menuItemFormMode.value === 'add') {
       await restaurantStore.createMenuItem(selectedRestaurant.id, payload)
+      showNotification('✅ Menu item created successfully!', 'success')
     } else {
       await restaurantStore.updateMenuItem(selectedRestaurant.id, menuItemForm.id, payload)
+      showNotification('✅ Menu item updated successfully!', 'success')
     }
 
-    await restaurantStore.fetchMenu(selectedRestaurant.id)
+    // Refresh menu items
+    menuItems.value = await restaurantStore.fetchMenu(selectedRestaurant.id)
     closeMenuItemForm()
   } catch (error) {
-    alert('Failed to save menu item: ' + error.message)
+    console.error('Failed to save menu item:', error)
+    showNotification('❌ Failed to save menu item', 'error')
   }
 }
 
 const deleteMenuItem = async (menuItemId) => {
-  if (confirm('Delete this menu item?')) {
-    try {
-      await restaurantStore.deleteMenuItem(selectedRestaurant.id, menuItemId)
-      await restaurantStore.fetchMenu(selectedRestaurant.id)
-    } catch (error) {
-      alert('Failed to delete menu item: ' + error.message)
-    }
+  if (!confirm('Are you sure you want to delete this menu item?')) return
+
+  try {
+    await restaurantStore.deleteMenuItem(selectedRestaurant.id, menuItemId)
+    showNotification('✅ Menu item deleted successfully!', 'success')
+
+    // Refresh menu items
+    menuItems.value = await restaurantStore.fetchMenu(selectedRestaurant.id)
+  } catch (error) {
+    console.error('Failed to delete menu item:', error)
+    showNotification('❌ Failed to delete menu item', 'error')
   }
+}
+
+// Notification helper
+const showNotification = (message, type = 'success') => {
+  const notification = document.createElement('div')
+  notification.className = `notification ${type}`
+  notification.textContent = message
+  document.body.appendChild(notification)
+
+  setTimeout(() => {
+    notification.classList.add('show')
+  }, 10)
+
+  setTimeout(() => {
+    notification.classList.remove('show')
+    setTimeout(() => {
+      document.body.removeChild(notification)
+    }, 300)
+  }, 3000)
 }
 </script>
 
@@ -568,8 +636,7 @@ const deleteMenuItem = async (menuItemId) => {
 }
 
 .card-actions {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
+  display: flex;
   gap: 0.5rem;
 }
 
@@ -586,6 +653,7 @@ const deleteMenuItem = async (menuItemId) => {
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
+  flex: 1;
 }
 
 .btn-primary {
@@ -609,15 +677,6 @@ const deleteMenuItem = async (menuItemId) => {
 
 .btn-secondary:hover {
   background: #e5e7eb;
-}
-
-.btn-danger {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.btn-danger:hover {
-  background: #fecaca;
 }
 
 .btn:disabled {
@@ -920,7 +979,46 @@ const deleteMenuItem = async (menuItemId) => {
   font-size: 0.9rem;
 }
 
+/* Notification */
+:global(.notification) {
+  position: fixed;
+  top: 2rem;
+  right: 2rem;
+  padding: 1rem 1.5rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+  font-weight: 600;
+  z-index: 9999;
+  opacity: 0;
+  transform: translateY(-20px);
+  transition: all 0.3s;
+}
+
+:global(.notification.show) {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+:global(.notification.success) {
+  background: #15803d;
+  color: white;
+}
+
+:global(.notification.error) {
+  background: #dc2626;
+  color: white;
+}
+
+:global(.notification.warning) {
+  background: #f59e0b;
+  color: white;
+}
+
 @media (max-width: 768px) {
+  .container {
+    padding: 1rem 0.5rem;
+  }
+
   .restaurant-grid {
     grid-template-columns: 1fr;
   }
@@ -932,7 +1030,7 @@ const deleteMenuItem = async (menuItemId) => {
   }
 
   .card-actions {
-    grid-template-columns: 1fr;
+    flex-direction: column;
   }
 
   .form-row {

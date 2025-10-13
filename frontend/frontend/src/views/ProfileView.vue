@@ -144,6 +144,7 @@
       </div>
     </div>
   </div>
+
 </template>
 
 <script setup>
@@ -171,7 +172,7 @@ const shipperStore = useShipperStore()
 
 const showEditForm = ref(false)
 const currentStatus = ref('offline')
-const shipperId = ref(null) // ← Lưu Shipper ID riêng
+const shipperId = ref(null)
 
 const editForm = ref({
   name: '',
@@ -197,7 +198,6 @@ onMounted(async () => {
     // Fetch shipper data if user is a shipper
     if (authStore.user.role === 'shipper') {
       try {
-        // Fetch all shippers and find the one with matching user_id
         await shipperStore.fetchShippers()
         const currentShipper = shipperStore.shippers.find(
             s => s.user_id === authStore.user.id || s.user?._id === authStore.user.id || s.user?.id === authStore.user.id
@@ -273,7 +273,7 @@ const handleStatusChange = async (status) => {
 
   try {
     console.log('Updating shipper status:', { shipperId: shipperId.value, status })
-    await shipperStore.updateStatus(shipperId.value, status) // ← Dùng shipperId thay vì userId
+    await shipperStore.updateStatus(shipperId.value, status)
     currentStatus.value = status
     showNotification(`✅ Status changed to ${getStatusLabel(status)}`)
   } catch (error) {
@@ -316,6 +316,7 @@ const showNotification = (message, type = 'success') => {
   max-width: 800px;
   margin: 0 auto;
   padding: 2rem 1rem;
+  padding-bottom: 6rem; /* Add space for location tracker */
 }
 
 .page-title {
@@ -378,21 +379,6 @@ const showNotification = (message, type = 'success') => {
   font-weight: 600;
   text-transform: capitalize;
   margin: 0;
-}
-
-.role-badge.customer {
-  background: #dbeafe;
-  color: #1e40af;
-}
-
-.role-badge.shipper {
-  background: #dcfce7;
-  color: #15803d;
-}
-
-.role-badge.restaurant_owner {
-  background: #fed7aa;
-  color: #ea580c;
 }
 
 /* Shipper Status Section */
@@ -640,30 +626,12 @@ const showNotification = (message, type = 'success') => {
   transition: all 0.3s;
 }
 
-:global(.notification.show) {
-  opacity: 1;
-  transform: translateY(0);
-}
 
-:global(.notification.success) {
-  background: #15803d;
-  color: white;
-}
-
-:global(.notification.error) {
-  background: #dc2626;
-  color: white;
-}
-
-:global(.notification.warning) {
-  background: #f59e0b;
-  color: white;
-}
 
 /* Responsive */
 @media (max-width: 768px) {
   .container {
-    padding: 1rem 0.5rem;
+    padding: 1rem 0.5rem 6rem 0.5rem;
   }
 
   .profile-header {

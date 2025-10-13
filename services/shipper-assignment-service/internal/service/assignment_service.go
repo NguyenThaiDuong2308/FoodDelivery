@@ -48,7 +48,10 @@ func (s *shipperAssignmentService) AssignNearestShipper(ctx context.Context, eve
 	}
 	result.ShipperID = shipperID
 	result.OrderID = event.OrderID
-	log.Println(shipperID)
+	log.Println("this is shipperID ", shipperID)
+	if shipperID == 0 {
+		return &result, nil
+	}
 	shipperCoord, err := s.locationRepo.GetLocation(ctx, uint(shipperID))
 	if err != nil {
 		return nil, err

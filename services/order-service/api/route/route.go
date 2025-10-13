@@ -16,4 +16,6 @@ func SetupRoutes(
 	orderRoute.GET("/:id", middlewares.AuthMiddleware(), orderHandler.GetOrderByID)
 	orderRoute.POST("/:id", middlewares.AuthMiddleware(), orderHandler.UpdateOrderStatus)
 	orderRoute.GET("/customer/:customer_id", middlewares.AuthMiddleware(), orderHandler.GetOrderByCustomerID)
+	orderRoute.GET("/restaurant/:restaurant_id", middlewares.AuthMiddleware(), orderHandler.GetOrderByRestaurantID)
+	orderRoute.GET("/shipper/:shipper_id", middlewares.AuthMiddleware(), orderHandler.GetOrderByShipperID)
 }

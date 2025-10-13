@@ -15,6 +15,8 @@ type OrderService interface {
 	CreateOrder(ctx context.Context, customerID int, restaurantID int, orderItems []models.OrderItem) error
 	GetOrderByID(ctx context.Context, id uint) (*models.Order, error)
 	GetOrderByCustomerID(ctx context.Context, customerID int) (*[]models.Order, error)
+	GetOrderByRestaurantID(ctx context.Context, restaurantID int) (*[]models.Order, error)
+	GetOrderByShipperID(ctx context.Context, shipperID int) (*[]models.Order, error)
 	UpdateOrderStatus(ctx context.Context, id uint, status string) error
 	AssignShipperOrder(ctx context.Context, request dto.AssignShipperOrderRequest) error
 }
@@ -27,7 +29,7 @@ type orderService struct {
 
 const OrderCreatedEvent = "order_created"
 const CreatedOrderStatus = "created"
-const CanceledOrderStatus = "canceled"
+const CanceledOrderStatus = "cancelled"
 const DeliveringOrderStatus = "delivering"
 
 func (o *orderService) CreateOrder(ctx context.Context, customerID int, restaurantID int, orderItems []models.OrderItem) error {
@@ -75,16 +77,18 @@ func (o *orderService) AssignShipperOrder(ctx context.Context, request dto.Assig
 	if err != nil {
 		return err
 	}
+	log.Println("assigning shipper", request.ShipperID)
 	if request.ShipperID == 0 {
 		order.ShipperID = 0
 		order.Status = CanceledOrderStatus
 		order.DeliveryPrice = 0
 		order.TotalPrice = order.DeliveryPrice + order.ItemsPrice
+		log.Println(order)
 		return o.orderRepo.AssignShipperOrder(ctx, order)
 	}
 	order.ShipperID = request.ShipperID
 	order.Status = DeliveringOrderStatus
-	order.DeliveryPrice = request.Distance * 5
+	order.DeliveryPrice = request.Distance * 0.05
 	order.TotalPrice = order.DeliveryPrice + order.ItemsPrice
 	return o.orderRepo.AssignShipperOrder(ctx, order)
 }
@@ -96,6 +100,14 @@ func (o *orderService) GetOrderByID(ctx context.Context, id uint) (*models.Order
 
 func (o *orderService) GetOrderByCustomerID(ctx context.Context, customerID int) (*[]models.Order, error) {
 	return o.orderRepo.GetOrderByCustomerID(ctx, customerID)
+}
+
+func (o *orderService) GetOrderByRestaurantID(ctx context.Context, restaurantID int) (*[]models.Order, error) {
+	return o.orderRepo.GetOrderByRestaurantID(ctx, restaurantID)
+}
+
+func (o *orderService) GetOrderByShipperID(ctx context.Context, shipperID int) (*[]models.Order, error) {
+	return o.orderRepo.GetOrderByShipperID(ctx, shipperID)
 }
 
 func (o *orderService) UpdateOrderStatus(ctx context.Context, id uint, status string) error {

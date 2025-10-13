@@ -19,13 +19,40 @@
         </div>
       </div>
 
+      <!-- Order Tracking Section -->
+      <div v-if="authStore.user && activeOrders.length > 0" class="order-tracking-section">
+        <h3 class="section-title">
+          <Package :size="24" />
+          Active Deliveries ({{ activeOrders.length }})
+        </h3>
+        <div class="order-cards">
+          <div
+              v-for="order in activeOrders"
+              :key="order.id"
+              class="order-tracking-card"
+              :class="{ selected: selectedOrderId === order.id }"
+              @click="selectOrder(order.id)"
+          >
+            <div class="order-info">
+              <h4>Order #{{ order.id }}</h4>
+              <span class="status-badge delivering">{{ getStatusLabel(order.status) }}</span>
+            </div>
+            <div class="tracking-info">
+              <p><Store :size="14" /> {{ getRestaurantName(order.restaurant_id) }}</p>
+              <p v-if="order.shipper_id"><User :size="14" /> Shipper #{{ order.shipper_id }}</p>
+              <p><DollarSign :size="14" /> ${{ order.total_price }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Map Container -->
       <div class="map-container">
         <div id="map" class="map-view"></div>
 
         <!-- Map Legend -->
         <div class="map-legend">
-          <h4>Shipper Status</h4>
+          <h4>Map Legend</h4>
           <div class="legend-items">
             <div class="legend-item">
               <span class="legend-dot available"></span>
@@ -36,8 +63,12 @@
               <span>Busy</span>
             </div>
             <div class="legend-item">
-              <span class="legend-dot offline"></span>
-              <span>Offline</span>
+              <span class="legend-icon">🏪</span>
+              <span>Restaurant</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-line"></div>
+              <span>Delivery Route</span>
             </div>
           </div>
         </div>
@@ -45,75 +76,14 @@
         <!-- Loading Overlay -->
         <div v-if="loading" class="map-loading">
           <Loader2 :size="48" class="spinner" />
-          <p>Loading shippers...</p>
-        </div>
-      </div>
-
-      <!-- Shippers List -->
-      <div class="shippers-section">
-        <h3 class="section-title">
-          <Users :size="24" />
-          Active Shippers
-        </h3>
-
-        <div v-if="shipperStore.shippers.length === 0" class="empty-state">
-          <Truck :size="64" />
-          <p>No shippers available</p>
+          <p>Loading tracking data...</p>
         </div>
 
-        <div v-else class="shippers-grid">
-          <div
-              v-for="shipper in shipperStore.shippers"
-              :key="shipper.id"
-              class="shipper-card"
-              :class="{ active: isShipperActive(shipper.status) }"
-          >
-            <div class="shipper-header">
-              <div class="shipper-avatar" :class="shipper.status">
-                <User :size="24" />
-              </div>
-              <div class="shipper-info">
-                <h4>{{ shipper.user?.name || 'Unknown' }}</h4>
-                <p class="phone">
-                  <Phone :size="14" />
-                  {{ shipper.user?.phone_number || 'N/A' }}
-                </p>
-              </div>
-              <span class="status-badge" :class="shipper.status">
-                {{ getStatusLabel(shipper.status) }}
-              </span>
-            </div>
-
-            <div class="location-section">
-              <div v-if="shipper.current_location" class="location-info">
-                <p class="location-title">
-                  <MapPin :size="16" />
-                  Current Location
-                </p>
-                <div class="coordinates">
-                  <span>Lat: {{ shipper.current_location.latitude?.toFixed(6) }}</span>
-                  <span>Lng: {{ shipper.current_location.longitude?.toFixed(6) }}</span>
-                </div>
-                <p class="last-update">
-                  <Clock :size="12" />
-                  Updated: {{ formatTime(shipper.updatedAt) }}
-                </p>
-              </div>
-              <div v-else class="no-location">
-                <MapPin :size="20" />
-                <p>Location not available</p>
-              </div>
-            </div>
-
-            <button
-                v-if="shipper.current_location"
-                @click="focusOnShipper(shipper)"
-                class="btn-focus"
-            >
-              <Navigation :size="16" />
-              Focus on Map
-            </button>
-          </div>
+        <!-- Error Message -->
+        <div v-if="error" class="map-error">
+          <AlertCircle :size="48" />
+          <p>{{ error }}</p>
+          <button @click="retryFetch" class="btn-retry">Try Again</button>
         </div>
       </div>
     </div>
@@ -121,31 +91,56 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import {
   Truck,
-  MapPin,
-  Phone,
   User,
-  Users,
   Activity,
   Clock,
   Loader2,
-  Navigation
+  AlertCircle,
+  Package,
+  Store,
+  DollarSign
 } from 'lucide-vue-next'
 import Navbar from '../components/Navbar.vue'
 import { useShipperStore } from '../stores/shipper'
+import { useOrderStore } from '../stores/order'
+import { useRestaurantStore } from '../stores/restaurant'
+import { useAuthStore } from '../stores/auth'
 
-// Mapbox Access Token - THAY ĐỔI TOKEN CỦA BẠN Ở ĐÂY
+// Mapbox Access Token
 mapboxgl.accessToken = 'pk.eyJ1Ijoibmd1eWVudGhhaWR1b25nIiwiYSI6ImNtZm1kZXQ3ODAwcDgyaXE3MnprZTNnM2sifQ.VRjRwGiuFp342CTc1RXOmQ'
 
+const API_BASE_URL = 'http://localhost:8000'
+
 const shipperStore = useShipperStore()
+const orderStore = useOrderStore()
+const restaurantStore = useRestaurantStore()
+const authStore = useAuthStore()
+
 const loading = ref(true)
+const error = ref(null)
 const map = ref(null)
 const markers = ref({})
+const restaurantMarkers = ref({})
+const routeLines = ref({})
 const updateInterval = ref(null)
+const shipperLocations = ref({})
+const locationUpdates = ref({})
+const selectedOrderId = ref(null)
+
+// Cached data
+const restaurantLocations = ref({})
+
+// Mock location simulation
+const shipperIntervals = ref({})
+const shipperRoutes = ref({})
+
+// Base fallback location (Hanoi center)
+const HANOI_CENTER = { lat: 21.0285, lng: 105.8542 }
 
 // Computed
 const activeShippersCount = computed(() => {
@@ -154,29 +149,438 @@ const activeShippersCount = computed(() => {
   ).length
 })
 
-// Initialize Map
+const activeOrders = computed(() => {
+  if (!authStore.user) return []
+
+  return orderStore.orders.filter(order => {
+    if (order.status !== 'delivering') return false
+
+    const role = authStore.user.role
+    if (role === 'customer') {
+      return order.customer_id === authStore.user.id
+    } else if (role === 'restaurant_admin') {
+      const userRestaurant = restaurantStore.restaurants.find(r => r.manager_id === authStore.user.id)
+      return userRestaurant && order.restaurant_id === userRestaurant.id
+    } else if (role === 'shipper') {
+      const shipperRecord = shipperStore.shippers.find(s => s.user_id === authStore.user.id)
+      return shipperRecord && order.shipper_id === shipperRecord.id
+    }
+    return false
+  })
+})
+
+// Geocode address using Mapbox Geocoding API
+async function geocodeAddress(address) {
+  if (!address) return null
+
+  try {
+    const response = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=${mapboxgl.accessToken}&country=VN&proximity=105.8342,21.0278`
+    )
+    const data = await response.json()
+
+    if (data.features && data.features.length > 0) {
+      const [lng, lat] = data.features[0].center
+      return { lat, lng, address: data.features[0].place_name }
+    }
+  } catch (err) {
+    console.error('Geocoding error:', err)
+  }
+  return null
+}
+
+// Get restaurant location from API
+async function getRestaurantLocation(restaurantId) {
+  if (restaurantLocations.value[restaurantId]) {
+    return restaurantLocations.value[restaurantId]
+  }
+
+  try {
+    const restaurant = await restaurantStore.fetchRestaurantById(restaurantId)
+
+    if (restaurant && restaurant.address) {
+      const location = await geocodeAddress(restaurant.address)
+      if (location) {
+        restaurantLocations.value[restaurantId] = {
+          ...location,
+          name: restaurant.name
+        }
+        return restaurantLocations.value[restaurantId]
+      }
+    }
+  } catch (err) {
+    console.error(`Failed to get restaurant ${restaurantId} location:`, err)
+  }
+
+  // Fallback
+  return { ...HANOI_CENTER, name: `Restaurant #${restaurantId}` }
+}
+
+// Get restaurant name
+function getRestaurantName(restaurantId) {
+  return restaurantLocations.value[restaurantId]?.name || `Restaurant #${restaurantId}`
+}
+
+// Fetch route from Mapbox Directions API
+async function getMapboxRoute(start, end) {
+  try {
+    const response = await fetch(
+        `https://api.mapbox.com/directions/v5/mapbox/driving/${start.lng},${start.lat};${end.lng},${end.lat}?geometries=geojson&access_token=${mapboxgl.accessToken}`
+    )
+    const data = await response.json()
+
+    if (data.routes && data.routes.length > 0) {
+      const route = data.routes[0]
+      const coordinates = route.geometry.coordinates
+
+      // Convert to lat/lng format
+      return coordinates.map(coord => ({
+        lng: coord[0],
+        lat: coord[1]
+      }))
+    }
+  } catch (err) {
+    console.error('Failed to fetch route:', err)
+  }
+  return null
+}
+
+// Parse WKT
+function parseWKT(wkt) {
+  if (!wkt) return null
+
+  const match = wkt.match(/POINT\(([0-9.-]+)\s+([0-9.-]+)\)/)
+  if (match) {
+    return {
+      longitude: parseFloat(match[1]),
+      latitude: parseFloat(match[2]),
+      wkt: wkt
+    }
+  }
+  return null
+}
+
+// Send location to backend
+async function sendLocationToBackend(shipperId, location) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/shipper/${shipperId}/location`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        latitude: location.latitude,
+        longitude: location.longitude
+      })
+    })
+
+    if (response.ok) {
+      return true
+    }
+    return false
+  } catch (err) {
+    console.error(`Failed to send location for shipper ${shipperId}:`, err)
+    return false
+  }
+}
+
+// Start route-based tracking
+async function startRouteBasedTracking(shipper, order) {
+  if (shipperIntervals.value[shipper.id]) return
+
+  const restaurantLoc = await getRestaurantLocation(order.restaurant_id)
+
+  // Get real route from Mapbox Directions API
+  const currentLoc = shipperLocations.value[shipper.id] || HANOI_CENTER
+  const routeWaypoints = await getMapboxRoute(currentLoc, restaurantLoc)
+
+  if (!routeWaypoints || routeWaypoints.length === 0) {
+    console.error('Failed to get route, falling back to random movement')
+    startRandomLocationUpdates(shipper)
+    return
+  }
+
+  shipperRoutes.value[shipper.id] = {
+    waypoints: routeWaypoints,
+    currentIndex: 0,
+    orderId: order.id,
+    restaurantLoc
+  }
+
+  // Set initial location
+  const initialPoint = routeWaypoints[0]
+  shipperLocations.value[shipper.id] = {
+    latitude: initialPoint.lat,
+    longitude: initialPoint.lng,
+    wkt: `POINT(${initialPoint.lng} ${initialPoint.lat})`
+  }
+  locationUpdates.value[shipper.id] = new Date()
+  sendLocationToBackend(shipper.id, shipperLocations.value[shipper.id])
+
+  // Update every 5 seconds
+  shipperIntervals.value[shipper.id] = setInterval(() => {
+    const route = shipperRoutes.value[shipper.id]
+    if (!route) return
+
+    // Move to next waypoint
+    route.currentIndex++
+
+    // If reached end, loop back (or you can stop here)
+    if (route.currentIndex >= route.waypoints.length) {
+      route.currentIndex = 0
+    }
+
+    const currentPoint = route.waypoints[route.currentIndex]
+
+    shipperLocations.value[shipper.id] = {
+      latitude: currentPoint.lat,
+      longitude: currentPoint.lng,
+      wkt: `POINT(${currentPoint.lng} ${currentPoint.lat})`
+    }
+    locationUpdates.value[shipper.id] = new Date()
+    sendLocationToBackend(shipper.id, shipperLocations.value[shipper.id])
+  }, 5000)
+}
+
+// Start random location updates
+function startRandomLocationUpdates(shipper) {
+  if (shipperIntervals.value[shipper.id]) return
+
+  const radiusMeters = 500
+  const radiusInDegrees = radiusMeters / 111000
+
+  const initialLocation = {
+    latitude: HANOI_CENTER.lat + (Math.random() - 0.5) * radiusInDegrees * 2,
+    longitude: HANOI_CENTER.lng + (Math.random() - 0.5) * radiusInDegrees * 2
+  }
+
+  shipperLocations.value[shipper.id] = {
+    ...initialLocation,
+    wkt: `POINT(${initialLocation.longitude} ${initialLocation.latitude})`
+  }
+  locationUpdates.value[shipper.id] = new Date()
+  sendLocationToBackend(shipper.id, initialLocation)
+
+  shipperIntervals.value[shipper.id] = setInterval(() => {
+    const newLocation = {
+      latitude: HANOI_CENTER.lat + (Math.random() - 0.5) * radiusInDegrees * 2,
+      longitude: HANOI_CENTER.lng + (Math.random() - 0.5) * radiusInDegrees * 2
+    }
+    shipperLocations.value[shipper.id] = {
+      ...newLocation,
+      wkt: `POINT(${newLocation.longitude} ${newLocation.latitude})`
+    }
+    locationUpdates.value[shipper.id] = new Date()
+    sendLocationToBackend(shipper.id, newLocation)
+  }, 5000)
+}
+
+// Stop tracking
+function stopShipperLocationUpdates(shipperId) {
+  if (shipperIntervals.value[shipperId]) {
+    clearInterval(shipperIntervals.value[shipperId])
+    delete shipperIntervals.value[shipperId]
+    delete shipperRoutes.value[shipperId]
+  }
+}
+
+// Fetch shipper location
+async function fetchShipperLocation(shipperId) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/shipper/${shipperId}/location`)
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return null
+      }
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    const data = await response.json()
+
+    if (data && data.location) {
+      const parsedLocation = parseWKT(data.location)
+
+      if (parsedLocation) {
+        shipperLocations.value[shipperId] = parsedLocation
+        locationUpdates.value[shipperId] = new Date()
+        return parsedLocation
+      }
+    }
+  } catch (err) {
+    console.error(`Failed to fetch location for shipper ${shipperId}:`, err)
+  }
+  return null
+}
+
+// Select order
+async function selectOrder(orderId) {
+  selectedOrderId.value = orderId
+  const order = activeOrders.value.find(o => o.id === orderId)
+  if (order && order.shipper_id) {
+    await focusOnOrder(order)
+  }
+}
+
+// Focus on order route
+async function focusOnOrder(order) {
+  if (!map.value) return
+
+  const restaurantLoc = await getRestaurantLocation(order.restaurant_id)
+  const shipperLoc = shipperLocations.value[order.shipper_id]
+
+  if (shipperLoc) {
+    const bounds = new mapboxgl.LngLatBounds()
+    bounds.extend([restaurantLoc.lng, restaurantLoc.lat])
+    bounds.extend([shipperLoc.longitude, shipperLoc.latitude])
+
+    map.value.fitBounds(bounds, { padding: 100 })
+  }
+}
+
+// Draw route on map
+async function drawRouteOnMap(orderId, restaurantLoc, shipperLoc) {
+  if (!map.value || !map.value.isStyleLoaded()) return
+
+  const routeId = `route-${orderId}`
+
+  // Remove existing
+  if (map.value.getLayer(routeId)) {
+    map.value.removeLayer(routeId)
+  }
+  if (map.value.getSource(routeId)) {
+    map.value.removeSource(routeId)
+  }
+
+  // Get route from shipper to restaurant
+  const routeWaypoints = await getMapboxRoute(
+      { lat: shipperLoc.latitude, lng: shipperLoc.longitude },
+      restaurantLoc
+  )
+
+  if (routeWaypoints && routeWaypoints.length > 0) {
+    const coordinates = routeWaypoints.map(wp => [wp.lng, wp.lat])
+
+    map.value.addSource(routeId, {
+      type: 'geojson',
+      data: {
+        type: 'Feature',
+        properties: {},
+        geometry: {
+          type: 'LineString',
+          coordinates: coordinates
+        }
+      }
+    })
+
+    map.value.addLayer({
+      id: routeId,
+      type: 'line',
+      source: routeId,
+      layout: {
+        'line-join': 'round',
+        'line-cap': 'round'
+      },
+      paint: {
+        'line-color': '#ea580c',
+        'line-width': 4
+      }
+    })
+  }
+
+  // Add restaurant marker
+  if (!restaurantMarkers.value[orderId]) {
+    restaurantMarkers.value[orderId] = new mapboxgl.Marker({
+      color: '#f59e0b',
+      scale: 1.2
+    })
+        .setLngLat([restaurantLoc.lng, restaurantLoc.lat])
+        .setPopup(new mapboxgl.Popup().setHTML(`
+        <div class="custom-popup">
+          <h4>🏪 ${restaurantLoc.name}</h4>
+          <p>${restaurantLoc.address || ''}</p>
+        </div>
+      `))
+        .addTo(map.value)
+  }
+
+  routeLines.value[orderId] = routeId
+}
+
+// Initialize
 onMounted(async () => {
   try {
-    // Initial fetch
     await shipperStore.fetchShippers()
 
-    // Initialize Mapbox
+    if (authStore.user) {
+      const role = authStore.user.role
+      if (role === 'customer') {
+        await orderStore.fetchCustomerOrders(authStore.user.id)
+      } else if (role === 'restaurant_admin') {
+        await restaurantStore.fetchRestaurants()
+        const userRestaurant = restaurantStore.restaurants.find(r => r.manager_id === authStore.user.id)
+        if (userRestaurant) {
+          await orderStore.fetchRestaurantOrders(userRestaurant.id)
+        }
+      } else if (role === 'shipper') {
+        const shipperRecord = shipperStore.shippers.find(s => s.user_id === authStore.user.id)
+        if (shipperRecord) {
+          await orderStore.fetchShipperOrders(shipperRecord.id)
+        }
+      }
+    }
+
     initMap()
 
-    // Update shippers every 5 seconds
+    // Start tracking
+    for (const shipper of shipperStore.shippers) {
+      if (shipper.status === 'available' || shipper.status === 'busy') {
+        const shipperOrder = orderStore.orders.find(o =>
+            o.shipper_id === shipper.id && o.status === 'delivering'
+        )
+
+        if (shipperOrder) {
+          await startRouteBasedTracking(shipper, shipperOrder)
+        } else {
+          startRandomLocationUpdates(shipper)
+        }
+      }
+    }
+
     updateInterval.value = setInterval(async () => {
       await shipperStore.fetchShippers()
-      updateMarkers()
-    }, 5000)
 
-  } catch (error) {
-    console.error('Failed to initialize tracking:', error)
+      if (authStore.user) {
+        const role = authStore.user.role
+        if (role === 'customer') {
+          await orderStore.fetchCustomerOrders(authStore.user.id)
+        } else if (role === 'restaurant_admin') {
+          const userRestaurant = restaurantStore.restaurants.find(r => r.manager_id === authStore.user.id)
+          if (userRestaurant) {
+            await orderStore.fetchRestaurantOrders(userRestaurant.id)
+          }
+        } else if (role === 'shipper') {
+          const shipperRecord = shipperStore.shippers.find(s => s.user_id === authStore.user.id)
+          if (shipperRecord) {
+            await orderStore.fetchShipperOrders(shipperRecord.id)
+          }
+        }
+      }
+
+      updateMarkers()
+    }, 30000)
+
+  } catch (err) {
+    console.error('Failed to initialize tracking:', err)
+    error.value = 'Failed to load tracking data'
   } finally {
     loading.value = false
   }
 })
 
 onUnmounted(() => {
+  Object.keys(shipperIntervals.value).forEach(shipperId => {
+    stopShipperLocationUpdates(parseInt(shipperId))
+  })
+
   if (updateInterval.value) {
     clearInterval(updateInterval.value)
   }
@@ -185,82 +589,90 @@ onUnmounted(() => {
   }
 })
 
-// Watch shippers changes
-watch(() => shipperStore.shippers, (newShippers) => {
-  if (map.value) {
-    updateMarkers()
+async function retryFetch() {
+  error.value = null
+  loading.value = true
+  try {
+    await shipperStore.fetchShippers()
+    if (map.value) {
+      updateMarkers()
+    } else {
+      initMap()
+    }
+  } catch (err) {
+    error.value = 'Failed to load tracking data'
+  } finally {
+    loading.value = false
   }
-}, { deep: true })
+}
 
-// Initialize Mapbox Map
 function initMap() {
   map.value = new mapboxgl.Map({
     container: 'map',
     style: 'mapbox://styles/mapbox/streets-v12',
-    center: [105.8342, 21.0278], // Hanoi, Vietnam
+    center: [105.8342, 21.0278],
     zoom: 12
   })
 
-  // Add navigation controls
   map.value.addControl(new mapboxgl.NavigationControl(), 'top-right')
-
-  // Add fullscreen control
   map.value.addControl(new mapboxgl.FullscreenControl(), 'top-right')
 
   map.value.on('load', () => {
     updateMarkers()
+
+    setInterval(() => {
+      updateMarkers()
+      updateRoutes()
+    }, 2000)
   })
 }
 
-// Update markers on map
 function updateMarkers() {
   if (!map.value) return
 
-  const activeShippers = shipperStore.shippers.filter(
-      s => s.current_location && (s.status === 'available' || s.status === 'busy')
-  )
+  const activeShippers = shipperStore.shippers.filter(s => {
+    const hasLocation = shipperLocations.value[s.id]
+    const isActive = s.status === 'available' || s.status === 'busy'
+    return hasLocation && isActive
+  })
 
-  // Remove markers for shippers that no longer exist or are offline
   Object.keys(markers.value).forEach(id => {
-    if (!activeShippers.find(s => s.id === id)) {
+    if (!activeShippers.find(s => s.id == id)) {
       markers.value[id].remove()
       delete markers.value[id]
     }
   })
 
-  // Add or update markers
   activeShippers.forEach(shipper => {
-    const { latitude, longitude } = shipper.current_location
+    const location = shipperLocations.value[shipper.id]
+    if (!location || !location.latitude || !location.longitude) return
 
-    if (!latitude || !longitude) return
+    const { latitude, longitude } = location
 
     if (markers.value[shipper.id]) {
-      // Update existing marker position
       markers.value[shipper.id].setLngLat([longitude, latitude])
     } else {
-      // Create new marker
       const el = createMarkerElement(shipper)
       const marker = new mapboxgl.Marker(el)
           .setLngLat([longitude, latitude])
-          .setPopup(createPopup(shipper))
           .addTo(map.value)
 
       markers.value[shipper.id] = marker
     }
   })
+}
 
-  // Fit bounds to show all markers
-  if (activeShippers.length > 0) {
-    const bounds = new mapboxgl.LngLatBounds()
-    activeShippers.forEach(shipper => {
-      const { latitude, longitude } = shipper.current_location
-      bounds.extend([longitude, latitude])
-    })
-    map.value.fitBounds(bounds, { padding: 50, maxZoom: 15 })
+async function updateRoutes() {
+  for (const order of activeOrders.value) {
+    if (order.shipper_id && shipperLocations.value[order.shipper_id]) {
+      const restaurantLoc = await getRestaurantLocation(order.restaurant_id)
+      const shipperLoc = shipperLocations.value[order.shipper_id]
+
+      await drawRouteOnMap(order.id, restaurantLoc, shipperLoc)
+    }
   }
 }
 
-// Create custom marker element
 function createMarkerElement(shipper) {
   const el = document.createElement('div')
   el.className = `custom-marker ${shipper.status}`
@@ -274,44 +686,10 @@ function createMarkerElement(shipper) {
         <circle cx="16" cy="18" r="2"></circle>
       </svg>
     </div>
-    <div class="marker-label">${shipper.user?.name || 'Shipper'}</div>
   `
   return el
 }
 
-// Create popup content
-function createPopup(shipper) {
-  const content = `
-    <div class="popup-content">
-      <h4>${shipper.user?.name || 'Unknown'}</h4>
-      <p><strong>Status:</strong> <span class="status-${shipper.status}">${getStatusLabel(shipper.status)}</span></p>
-      <p><strong>Phone:</strong> ${shipper.user?.phone_number || 'N/A'}</p>
-      <p><strong>Location:</strong><br/>
-        ${shipper.current_location.latitude.toFixed(6)}, ${shipper.current_location.longitude.toFixed(6)}
-      </p>
-    </div>
-  `
-  return new mapboxgl.Popup({ offset: 25 }).setHTML(content)
-}
-
-// Focus on specific shipper
-function focusOnShipper(shipper) {
-  if (!map.value || !shipper.current_location) return
-
-  const { latitude, longitude } = shipper.current_location
-  map.value.flyTo({
-    center: [longitude, latitude],
-    zoom: 15,
-    duration: 1500
-  })
-
-  // Open popup
-  if (markers.value[shipper.id]) {
-    markers.value[shipper.id].togglePopup()
-  }
-}
-
-// Helper functions
 function isShipperActive(status) {
   return status === 'available' || status === 'busy'
 }
@@ -320,7 +698,11 @@ function getStatusLabel(status) {
   const labels = {
     available: '🟢 Available',
     busy: '🟡 Busy',
-    offline: '🔴 Offline'
+    offline: '🔴 Offline',
+    delivering: '🚚 Delivering',
+    created: '📝 Created',
+    completed: '✅ Completed',
+    cancelled: '❌ Cancelled'
   }
   return labels[status] || status
 }
@@ -329,12 +711,12 @@ function formatTime(timestamp) {
   if (!timestamp) return 'Unknown'
   const date = new Date(timestamp)
   const now = new Date()
-  const diff = Math.floor((now - date) / 1000) // seconds
+  const diff = Math.floor((now - date) / 1000)
 
   if (diff < 60) return `${diff}s ago`
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
-  return date.toLocaleDateString()
+  return date.toLocaleString()
 }
 </script>
 
@@ -381,6 +763,86 @@ function formatTime(timestamp) {
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
+/* Order Tracking Section */
+.order-tracking-section {
+  margin-bottom: 2rem;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 1.5rem;
+}
+
+.order-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1rem;
+}
+
+.order-tracking-card {
+  background: white;
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  cursor: pointer;
+  transition: all 0.3s;
+  border: 2px solid transparent;
+}
+
+.order-tracking-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  transform: translateY(-2px);
+}
+
+.order-tracking-card.selected {
+  border-color: #ea580c;
+  box-shadow: 0 4px 16px rgba(234, 88, 12, 0.3);
+}
+
+.order-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.order-info h4 {
+  margin: 0;
+  font-size: 1.125rem;
+  color: #1f2937;
+  font-weight: 700;
+}
+
+.status-badge {
+  padding: 0.375rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.status-badge.delivering {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.tracking-info {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.tracking-info p {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+
 /* Map Container */
 .map-container {
   position: relative;
@@ -392,7 +854,7 @@ function formatTime(timestamp) {
 }
 
 .map-view {
-  height: 500px;
+  height: 600px;
   border-radius: 0.75rem;
   overflow: hidden;
 }
@@ -443,20 +905,55 @@ function formatTime(timestamp) {
   background: #f59e0b;
 }
 
-.legend-dot.offline {
-  background: #ef4444;
+.legend-icon {
+  font-size: 1.25rem;
 }
 
-.map-loading {
+.legend-line {
+  width: 30px;
+  height: 3px;
+  background: #ea580c;
+  border-radius: 2px;
+}
+
+.map-loading,
+.map-error {
   position: absolute;
   inset: 0;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.95);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   border-radius: 0.75rem;
   z-index: 100;
+  padding: 2rem;
+}
+
+.map-error svg {
+  color: #ef4444;
+  margin-bottom: 1rem;
+}
+
+.map-error p {
+  color: #6b7280;
+  margin-bottom: 1.5rem;
+  font-size: 1.125rem;
+}
+
+.btn-retry {
+  padding: 0.75rem 1.5rem;
+  background: #ea580c;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-retry:hover {
+  background: #c2410c;
 }
 
 .spinner {
@@ -468,216 +965,6 @@ function formatTime(timestamp) {
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
-}
-
-/* Shippers Section */
-.shippers-section {
-  margin-top: 2rem;
-}
-
-.section-title {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #1f2937;
-  margin-bottom: 1.5rem;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 4rem 2rem;
-  background: white;
-  border-radius: 1rem;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-}
-
-.empty-state svg {
-  color: #d1d5db;
-  margin-bottom: 1rem;
-}
-
-.empty-state p {
-  color: #6b7280;
-  margin: 0;
-}
-
-.shippers-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 1.5rem;
-}
-
-.shipper-card {
-  background: white;
-  border-radius: 1rem;
-  padding: 1.5rem;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-  transition: all 0.3s;
-  border: 2px solid transparent;
-}
-
-.shipper-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-}
-
-.shipper-card.active {
-  border-color: #22c55e;
-}
-
-.shipper-header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.shipper-avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.shipper-avatar.available {
-  background: #dcfce7;
-  color: #15803d;
-}
-
-.shipper-avatar.busy {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.shipper-avatar.offline {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.shipper-info {
-  flex: 1;
-}
-
-.shipper-info h4 {
-  font-size: 1.125rem;
-  font-weight: 700;
-  color: #1f2937;
-  margin: 0 0 0.25rem 0;
-}
-
-.phone {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  color: #6b7280;
-  font-size: 0.875rem;
-  margin: 0;
-}
-
-.status-badge {
-  padding: 0.375rem 0.75rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.status-badge.available {
-  background: #dcfce7;
-  color: #15803d;
-}
-
-.status-badge.busy {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.status-badge.offline {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.location-section {
-  margin-bottom: 1rem;
-}
-
-.location-info {
-  background: #f9fafb;
-  border-radius: 0.75rem;
-  padding: 1rem;
-}
-
-.location-title {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: #1f2937;
-  font-weight: 600;
-  font-size: 0.9rem;
-  margin: 0 0 0.75rem 0;
-}
-
-.coordinates {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  color: #6b7280;
-  font-size: 0.875rem;
-  font-family: 'Courier New', monospace;
-}
-
-.last-update {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  color: #9ca3af;
-  font-size: 0.75rem;
-  margin-top: 0.5rem;
-}
-
-.no-location {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-  color: #9ca3af;
-  text-align: center;
-}
-
-.no-location svg {
-  margin-bottom: 0.5rem;
-}
-
-.no-location p {
-  margin: 0;
-  font-size: 0.875rem;
-}
-
-.btn-focus {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  background: #ea580c;
-  color: white;
-  border: none;
-  border-radius: 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-focus:hover {
-  background: #c2410c;
-  transform: scale(1.02);
 }
 
 /* Custom Marker Styles */
@@ -709,17 +996,6 @@ function formatTime(timestamp) {
   color: white;
 }
 
-:global(.custom-marker .marker-label) {
-  margin-top: 0.25rem;
-  padding: 0.25rem 0.5rem;
-  background: rgba(0,0,0,0.75);
-  color: white;
-  border-radius: 0.25rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
 @keyframes pulse {
   0%, 100% {
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
@@ -730,33 +1006,17 @@ function formatTime(timestamp) {
 }
 
 /* Popup Styles */
-:global(.mapboxgl-popup-content) {
-  padding: 1rem;
-  border-radius: 0.75rem;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-}
-
-:global(.popup-content h4) {
-  font-size: 1.125rem;
+:global(.custom-popup h4) {
+  font-size: 1rem;
   font-weight: 700;
   color: #1f2937;
-  margin: 0 0 0.75rem 0;
+  margin: 0 0 0.5rem 0;
 }
 
-:global(.popup-content p) {
+:global(.custom-popup p) {
   font-size: 0.875rem;
   color: #6b7280;
-  margin: 0.5rem 0;
-}
-
-:global(.popup-content .status-available) {
-  color: #15803d;
-  font-weight: 600;
-}
-
-:global(.popup-content .status-busy) {
-  color: #92400e;
-  font-weight: 600;
+  margin: 0;
 }
 
 /* Responsive */
@@ -770,8 +1030,18 @@ function formatTime(timestamp) {
     align-items: flex-start;
   }
 
+  .header-info {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .info-badge {
+    width: 100%;
+    justify-content: center;
+  }
+
   .map-view {
-    height: 350px;
+    height: 400px;
   }
 
   .map-legend {
@@ -780,7 +1050,7 @@ function formatTime(timestamp) {
     padding: 0.75rem 1rem;
   }
 
-  .shippers-grid {
+  .order-cards {
     grid-template-columns: 1fr;
   }
 }

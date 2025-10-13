@@ -57,6 +57,7 @@ func (h *KafkaConsumerHandler) StartConsume(ctx context.Context) error {
 			}
 			log.Println(event)
 			result, err := h.service.AssignNearestShipper(ctx, &event)
+
 			if err != nil {
 				log.Println(err)
 				continue

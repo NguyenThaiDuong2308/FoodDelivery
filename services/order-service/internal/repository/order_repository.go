@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"log"
 	"order-service/internal/models"
 
 	"gorm.io/gorm"
@@ -13,6 +14,8 @@ type OrderRepository interface {
 	GetOrderByCustomerID(ctx context.Context, customerID int) (*[]models.Order, error)
 	UpdateOrderStatus(ctx context.Context, id uint, status string) error
 	AssignShipperOrder(ctx context.Context, order *models.Order) error
+	GetOrderByRestaurantID(ctx context.Context, restaurantID int) (*[]models.Order, error)
+	GetOrderByShipperID(ctx context.Context, shipperID int) (*[]models.Order, error)
 }
 
 type orderRepository struct {
@@ -25,6 +28,7 @@ func NewOrderRepository(db *gorm.DB) OrderRepository {
 
 func (r *orderRepository) AssignShipperOrder(ctx context.Context, order *models.Order) error {
 	result := r.db.WithContext(ctx).Save(order)
+	log.Println(order)
 	return result.Error
 }
 
@@ -52,6 +56,26 @@ func (r *orderRepository) GetOrderByCustomerID(ctx context.Context, customerID i
 		return nil, result.Error
 	}
 	return &orders, nil
+}
+
+func (r *orderRepository) GetOrderByRestaurantID(ctx context.Context, restaurantID int) (*[]models.Order, error) {
+	var orders []models.Order
+	result := r.db.WithContext(ctx).Preload("OrderItems").Where("restaurant_id = ?", restaurantID).Find(&orders)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &orders, nil
+}
+
+func (r *orderRepository) GetOrderByShipperID(ctx context.Context, shipperID int) (*[]models.Order, error) {
+	var orders []models.Order
+	log.Println(shipperID)
+	result := r.db.WithContext(ctx).Preload("OrderItems").Where("shipper_id = ?", shipperID).Find(&orders)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &orders, nil
+
 }
 
 func (r *orderRepository) UpdateOrderStatus(ctx context.Context, id uint, status string) error {

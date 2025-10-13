@@ -18,6 +18,9 @@ components:
         id:
           type: integer
           example: 3
+        manager_id:
+          type: integer
+          example: 7
         name:
           type: string
           example: restaurant-3
@@ -62,6 +65,9 @@ components:
         id:
           type: integer
           example: 2
+        restaurant_id:
+          type: integer
+          example: 1
         name:
           type: string
           example: "2 banana"

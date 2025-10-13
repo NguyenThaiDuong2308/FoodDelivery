@@ -34,10 +34,7 @@ apiClient.interceptors.response.use(
                         refresh_token: refreshToken
                     })
 
-                    sessionStorage.setItem('token', data.accessToken)
-                    if (data.refreshToken) {
-                        sessionStorage.setItem('refreshToken', data.refreshToken)
-                    }
+                    sessionStorage.setItem('token', data.access_token)
 
                     originalRequest.headers.Authorization = `Bearer ${data.accessToken}`
                     return apiClient(originalRequest)

@@ -285,13 +285,6 @@ services:
       kong:
         condition: service_healthy
 
-  client:
-    build:
-      context: ./client
-      dockerfile: Dockerfile
-    ports:
-    - "3000:3000"
-
 volumes:
   redis_data:
   postgres_data:

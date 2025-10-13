@@ -1,4 +1,4 @@
-export const API_BASE_URL = 'http://192.168.237.130:8000'
+export const API_BASE_URL = 'http://localhost:8000'
 
 export const API_ENDPOINTS = {
     // Auth
@@ -23,7 +23,8 @@ export const API_ENDPOINTS = {
     ORDERS: '/order',
     ORDER_BY_ID: (id) => `/order/${id}`,
     CUSTOMER_ORDERS: (id) => `/order/customer/${id}`,
-
+    RESTAURANT_ORDERS: (id) => `/order/restaurant/${id}`,
+    SHIPPER_ORDERS: (id) => `/order/shipper/${id}`,
     // Shipper
     SHIPPERS: '/shipper',
     SHIPPER_BY_ID: (id) => `/shipper/${id}`,

@@ -23,6 +23,13 @@
         >
           <Settings :size="20" /> Manage Restaurant
         </router-link>
+        <router-link
+            v-if="authStore.user?.role === 'admin'"
+            to="/admin/users"
+            @click="closeMobile"
+        >
+          <Users :size="20" /> All Users
+        </router-link>
         <router-link to="/cart" class="cart-link" @click="closeMobile">
           <ShoppingCart :size="24" />
           <span v-if="cartStore.itemCount > 0" class="badge">
@@ -49,7 +56,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Truck, Store, Package, MapPin, ShoppingCart, User, LogOut, Menu, Settings, X } from 'lucide-vue-next'
+import { Truck, Store, Package, MapPin, ShoppingCart, User, Users, LogOut, Menu, Settings, X } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth'
 import { useCartStore } from '../stores/cart'
 

@@ -17,11 +17,14 @@ export const useUserStore = defineStore('user', () => {
         loading.value = true
         error.value = null
         try {
-            users.value = await userService.getAll()
+            const result = await userService.getAll()
+            users.value = result.users
+            console.log(users)
         } catch (err) {
             error.value = err.message
             throw err
         } finally {
+            console.log(users)
             loading.value = false
         }
     }

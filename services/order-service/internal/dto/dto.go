@@ -27,6 +27,7 @@ type OrderResponse struct {
 
 	CustomerID   int                 `json:"customer_id"`
 	RestaurantID int                 `json:"restaurant_id"`
+	ShipperID    int                 `json:"shipper_id"`
 	TotalPrice   float64             `json:"total_price"`
 	Status       string              `json:"status"`
 	OrderItems   []OrderItemResponse `json:"order_items"`

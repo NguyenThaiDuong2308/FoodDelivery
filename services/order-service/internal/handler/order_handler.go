@@ -59,32 +59,28 @@ func (o *OrderHandler) GetOrderByID(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"message": err.Error()})
 		return
 	}
-	claims := c.MustGet("claims").(jwt.MapClaims)
-	userID := claims["user_id"].(float64)
-	userRole := claims["role"].(string)
-	if (int(userID) == order.CustomerID && userRole == "customer") || (int(userID) == order.RestaurantID && userRole == "restaurant") {
-		var orderItems []dto.OrderItemResponse
-		for _, item := range order.OrderItems {
-			orderItems = append(orderItems, dto.OrderItemResponse{
-				ID:         item.ID,
-				OrderID:    item.OrderID,
-				MenuItemID: item.MenuItemID,
-				Quantity:   item.Quantity,
-			})
-		}
-		orderResp := dto.OrderResponse{
-			ID:           order.ID,
-			CustomerID:   order.CustomerID,
-			RestaurantID: order.RestaurantID,
-			TotalPrice:   order.TotalPrice,
-			Status:       order.Status,
-			OrderItems:   orderItems,
-		}
 
-		c.JSON(http.StatusOK, orderResp)
-		return
+	var orderItems []dto.OrderItemResponse
+	for _, item := range order.OrderItems {
+		orderItems = append(orderItems, dto.OrderItemResponse{
+			ID:         item.ID,
+			OrderID:    item.OrderID,
+			MenuItemID: item.MenuItemID,
+			Quantity:   item.Quantity,
+		})
 	}
-	c.JSON(http.StatusUnauthorized, gin.H{"message": "Can't access to other order's user"})
+	orderResp := dto.OrderResponse{
+		ID:           order.ID,
+		CustomerID:   order.CustomerID,
+		RestaurantID: order.RestaurantID,
+		ShipperID:    order.ShipperID,
+		TotalPrice:   order.TotalPrice,
+		Status:       order.Status,
+		OrderItems:   orderItems,
+	}
+
+	c.JSON(http.StatusOK, orderResp)
+	return
 }
 
 func (o *OrderHandler) GetOrderByCustomerID(c *gin.Context) {
@@ -115,6 +111,69 @@ func (o *OrderHandler) GetOrderByCustomerID(c *gin.Context) {
 			ID:           order.ID,
 			CustomerID:   order.CustomerID,
 			RestaurantID: order.RestaurantID,
+			ShipperID:    order.ShipperID,
+			TotalPrice:   order.TotalPrice,
+			Status:       order.Status,
+			OrderItems:   orderItems,
+		})
+	}
+	c.JSON(http.StatusOK, orderResponses)
+}
+
+func (o *OrderHandler) GetOrderByRestaurantID(c *gin.Context) {
+	restaurantID, _ := strconv.Atoi(c.Param("restaurant_id"))
+	orders, err := o.orderService.GetOrderByRestaurantID(c.Request.Context(), restaurantID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		return
+	}
+	var orderResponses []dto.OrderResponse
+	for _, order := range *orders {
+		var orderItems []dto.OrderItemResponse
+		for _, item := range order.OrderItems {
+			orderItems = append(orderItems, dto.OrderItemResponse{
+				ID:         item.ID,
+				OrderID:    item.OrderID,
+				MenuItemID: item.MenuItemID,
+				Quantity:   item.Quantity,
+			})
+		}
+		orderResponses = append(orderResponses, dto.OrderResponse{
+			ID:           order.ID,
+			CustomerID:   order.CustomerID,
+			RestaurantID: order.RestaurantID,
+			ShipperID:    order.ShipperID,
+			TotalPrice:   order.TotalPrice,
+			Status:       order.Status,
+			OrderItems:   orderItems,
+		})
+	}
+	c.JSON(http.StatusOK, orderResponses)
+}
+
+func (o *OrderHandler) GetOrderByShipperID(c *gin.Context) {
+	shipperID, _ := strconv.Atoi(c.Param("shipper_id"))
+	orders, err := o.orderService.GetOrderByShipperID(c.Request.Context(), shipperID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		return
+	}
+	var orderResponses []dto.OrderResponse
+	for _, order := range *orders {
+		var orderItems []dto.OrderItemResponse
+		for _, item := range order.OrderItems {
+			orderItems = append(orderItems, dto.OrderItemResponse{
+				ID:         item.ID,
+				OrderID:    item.OrderID,
+				MenuItemID: item.MenuItemID,
+				Quantity:   item.Quantity,
+			})
+		}
+		orderResponses = append(orderResponses, dto.OrderResponse{
+			ID:           order.ID,
+			CustomerID:   order.CustomerID,
+			RestaurantID: order.RestaurantID,
+			ShipperID:    order.ShipperID,
 			TotalPrice:   order.TotalPrice,
 			Status:       order.Status,
 			OrderItems:   orderItems,

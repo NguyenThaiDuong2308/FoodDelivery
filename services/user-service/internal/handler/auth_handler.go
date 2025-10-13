@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log"
 	"net/http"
 	"user-service/internal/models"
 	"user-service/internal/service"
@@ -146,6 +147,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 		return
 	}
 	accessToken, err := h.authService.RefreshToken(c.Request.Context(), req.RefreshToken)
+	log.Println("can't refreshToken", err)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

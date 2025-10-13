@@ -16,12 +16,9 @@ components:
         id:
           type: integer
           example: 3
-        name:
-          type: string
-          example: "Nguyen Van A"
-        phone_number:
-          type: string
-          example: "0912345678"
+        user_id:
+          type: integer
+          example: 7
         status:
           type: string
           description: Current availability status of the shipper
@@ -30,8 +27,6 @@ components:
             - available
             - unavailable
             - busy
-        current_location:
-          $ref: "#/components/schemas/Location"
     ShipperList:
       type: array
       items:
@@ -44,17 +39,16 @@ components:
         status:
           type: string
           example: "available"
-    Location:
+    ShipperLocation:
       type: object
       properties:
-        latitude:
-          type: number
-          format: double
-          example: 25.867484
-        longitude:
-          type: number
-          format: double
-          example: 104.1231313
+        location:
+          type: string
+          example: "POINT(105.852378 21.027939)"
+          description: Location of the shipper in WKT (Well-Known Text) format
+        shipper:
+          type: integer
+          example: 1
     LocationUpdate:
       type: object
       required:
@@ -157,7 +151,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Location"
+                $ref: "#/components/schemas/ShipperLocation"
         "404":
           $ref: "#/components/responses/NotFound"
     put:
@@ -183,7 +177,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Location"
+                $ref: "#/components/schemas/ShipperLocation"
         "400":
           $ref: "#/components/responses/BadRequest"
         "404":
