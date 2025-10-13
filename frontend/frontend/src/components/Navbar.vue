@@ -7,35 +7,46 @@
       </div>
 
       <nav class="navbar-menu" :class="{ active: mobileMenuOpen }">
-        <router-link to="/" @click="closeMobile">
-          <Store :size="20" /> Restaurants
-        </router-link>
-        <router-link to="/orders" @click="closeMobile">
-          <Package :size="20" /> Orders
-        </router-link>
-        <router-link to="/tracking" @click="closeMobile">
-          <MapPin :size="20" /> Track
-        </router-link>
-        <router-link
-            v-if="authStore.user?.role === 'restaurant_admin'"
-            to="/admin/restaurants"
-            @click="closeMobile"
-        >
-          <Settings :size="20" /> Manage Restaurant
-        </router-link>
-        <router-link
-            v-if="authStore.user?.role === 'admin'"
-            to="/admin/users"
-            @click="closeMobile"
-        >
-          <Users :size="20" /> All Users
-        </router-link>
-        <router-link to="/cart" class="cart-link" @click="closeMobile">
-          <ShoppingCart :size="24" />
-          <span v-if="cartStore.itemCount > 0" class="badge">
-            {{ cartStore.itemCount }}
-          </span>
-        </router-link>
+        <!-- Admin: Only All Users -->
+        <template v-if="authStore.user?.role === 'admin'">
+          <router-link to="/admin/users" @click="closeMobile">
+            <Users :size="20" /> All Users
+          </router-link>
+        </template>
+
+        <!-- Other roles: Full menu -->
+        <template v-else>
+          <router-link to="/" @click="closeMobile">
+            <Store :size="20" /> Restaurants
+          </router-link>
+          <router-link to="/orders" @click="closeMobile">
+            <Package :size="20" /> Orders
+          </router-link>
+          <router-link to="/tracking" @click="closeMobile">
+            <MapPin :size="20" /> Track
+          </router-link>
+          <router-link
+              v-if="authStore.user?.role === 'restaurant_admin'"
+              to="/admin/restaurants"
+              @click="closeMobile"
+          >
+            <Settings :size="20" /> Manage Restaurant
+          </router-link>
+          <!-- Cart: Only for customers -->
+          <router-link
+              v-if="authStore.user?.role === 'customer'"
+              to="/cart"
+              class="cart-link"
+              @click="closeMobile"
+          >
+            <ShoppingCart :size="24" />
+            <span v-if="cartStore.itemCount > 0" class="badge">
+              {{ cartStore.itemCount }}
+            </span>
+          </router-link>
+        </template>
+
+        <!-- Profile & Logout (for all roles) -->
         <router-link to="/profile" class="user-profile" @click="closeMobile">
           <User :size="20" />
           <span>{{ authStore.user?.name }}</span>

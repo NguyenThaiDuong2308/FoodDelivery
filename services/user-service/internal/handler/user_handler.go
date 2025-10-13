@@ -47,6 +47,24 @@ func (h *UserHandler) GetUserByID(c *gin.Context) {
 	})
 }
 
+func (h *UserHandler) GetUserAddressByID(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	user, err := h.userService.GetUserByID(c.Request.Context(), uint(id))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"message": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"id":      user.ID,
+		"address": user.Address,
+	})
+}
+
 type UpdateUserRequest struct {
 	Email       string `json:"email"`
 	Name        string `json:"name"`

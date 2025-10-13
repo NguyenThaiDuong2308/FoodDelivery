@@ -25,12 +25,15 @@ type orderService struct {
 	orderRepo        repository.OrderRepository
 	restaurantClient external.RestaurantClient
 	kafkaProducer    *kafka.KafkaProducer
+	shipperClient    external.ShipperStatusClient
 }
 
+const AvailableShipperStatus = "available"
 const OrderCreatedEvent = "order_created"
 const CreatedOrderStatus = "created"
 const CanceledOrderStatus = "cancelled"
 const DeliveringOrderStatus = "delivering"
+const OrderCompletedStatus = "completed"
 
 func (o *orderService) CreateOrder(ctx context.Context, customerID int, restaurantID int, orderItems []models.OrderItem) error {
 	var order models.Order
@@ -111,13 +114,25 @@ func (o *orderService) GetOrderByShipperID(ctx context.Context, shipperID int) (
 }
 
 func (o *orderService) UpdateOrderStatus(ctx context.Context, id uint, status string) error {
+	order, err := o.orderRepo.GetOrderByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	shipperID := order.ShipperID
+	if status == OrderCompletedStatus {
+		err := o.shipperClient.UpdateShipperStatus(ctx, AvailableShipperStatus, shipperID)
+		if err != nil {
+			return err
+		}
+	}
 	return o.orderRepo.UpdateOrderStatus(ctx, id, status)
 }
 
-func NewOrderService(orderRepo repository.OrderRepository, restaurantClient external.RestaurantClient, producer *kafka.KafkaProducer) OrderService {
+func NewOrderService(orderRepo repository.OrderRepository, restaurantClient external.RestaurantClient, producer *kafka.KafkaProducer, shipperClient external.ShipperStatusClient) OrderService {
 	return &orderService{
 		orderRepo:        orderRepo,
 		restaurantClient: restaurantClient,
 		kafkaProducer:    producer,
+		shipperClient:    shipperClient,
 	}
 }

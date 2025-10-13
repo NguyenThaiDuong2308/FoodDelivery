@@ -102,6 +102,23 @@ export const useUserStore = defineStore('user', () => {
         }
     }
 
+    async function fetchUserLocation(userId){
+        loading.value = true
+        error.value = null
+        try {
+            const locationData = await userService.getLocation(userId)
+            // locationData = { id: number, address: string }
+            console.log(`User ${userId} location:`, locationData)
+            return locationData
+        } catch (err) {
+            error.value = err.message
+            console.error(`Error fetching location for user ${userId}:`, err)
+            throw err
+        } finally {
+            loading.value = false
+        }
+    }
+
     function setCurrentUser(user) {
         currentUser.value = user
     }
@@ -125,6 +142,7 @@ export const useUserStore = defineStore('user', () => {
         updateUser,
         deleteUser,
         resetPassword,
+        fetchUserLocation,
         setCurrentUser,
         clearCurrentUser,
         clearError

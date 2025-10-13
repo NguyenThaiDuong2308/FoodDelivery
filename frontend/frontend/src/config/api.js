@@ -1,5 +1,5 @@
-export const API_BASE_URL = 'http://localhost:8000'
-
+//export const API_BASE_URL = 'http://localhost:8000'
+export const API_BASE_URL = 'http://192.168.237.130:8000'
 export const API_ENDPOINTS = {
     // Auth
     LOGIN: '/auth/login',
@@ -12,6 +12,7 @@ export const API_ENDPOINTS = {
     // User
     USERS: '/user',
     USER_BY_ID: (id) => `/user/${id}`,
+    USER_LOCATION: (id) => `/user/${id}/get-location`,
 
     // Restaurant
     RESTAURANTS: '/restaurant',

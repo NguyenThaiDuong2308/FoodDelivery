@@ -21,6 +21,7 @@ func SetupRoutes(
 	authRoute.POST("/forgot-password", authHandler.ForgotPassword)
 	authRoute.POST("/reset-forgot-password", authHandler.ResetForgotPassword)
 	userRoute := r.Group("/user")
+	userRoute.GET("/:id/get-location", userHandler.GetUserAddressByID)
 	userRoute.Use(middlewares.AuthMiddleware())
 	{
 		userRoute.GET("/:id", userHandler.GetUserByID)

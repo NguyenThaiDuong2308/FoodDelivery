@@ -20,7 +20,7 @@
       </div>
 
       <!-- Order Tracking Section -->
-      <div v-if="authStore.user && activeOrders.length > 0" class="order-tracking-section">
+      <div v-if="authStore.user && (activeOrders && activeOrders.length > 0)" class="order-tracking-section">
         <h3 class="section-title">
           <Package :size="24" />
           Active Deliveries ({{ activeOrders.length }})
@@ -41,6 +41,15 @@
               <p><Store :size="14" /> {{ getRestaurantName(order.restaurant_id) }}</p>
               <p v-if="order.shipper_id"><User :size="14" /> Shipper #{{ order.shipper_id }}</p>
               <p><DollarSign :size="14" /> ${{ order.total_price }}</p>
+            </div>
+            <!-- Delivery Stage Indicator -->
+            <div class="delivery-stage">
+              <span :class="{ active: deliveryStages[order.id] === 'to_restaurant' }">
+                🏪 To Restaurant
+              </span>
+              <span :class="{ active: deliveryStages[order.id] === 'to_customer' }">
+                📍 To Customer
+              </span>
             </div>
           </div>
         </div>
@@ -65,6 +74,10 @@
             <div class="legend-item">
               <span class="legend-icon">🏪</span>
               <span>Restaurant</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-icon">📍</span>
+              <span>Customer</span>
             </div>
             <div class="legend-item">
               <div class="legend-line"></div>
@@ -110,22 +123,26 @@ import { useShipperStore } from '../stores/shipper'
 import { useOrderStore } from '../stores/order'
 import { useRestaurantStore } from '../stores/restaurant'
 import { useAuthStore } from '../stores/auth'
+import {useUserStore} from "@/stores/user";
 
 // Mapbox Access Token
 mapboxgl.accessToken = 'pk.eyJ1Ijoibmd1eWVudGhhaWR1b25nIiwiYSI6ImNtZm1kZXQ3ODAwcDgyaXE3MnprZTNnM2sifQ.VRjRwGiuFp342CTc1RXOmQ'
 
-const API_BASE_URL = 'http://localhost:8000'
+//const API_BASE_URL = 'http://localhost:8000'
+const API_BASE_URL = 'http://192.168.237.130:8000'
 
 const shipperStore = useShipperStore()
 const orderStore = useOrderStore()
 const restaurantStore = useRestaurantStore()
 const authStore = useAuthStore()
+const userStore = useUserStore()
 
 const loading = ref(true)
 const error = ref(null)
 const map = ref(null)
 const markers = ref({})
 const restaurantMarkers = ref({})
+const customerMarkers = ref({})
 const routeLines = ref({})
 const updateInterval = ref(null)
 const shipperLocations = ref({})
@@ -134,14 +151,17 @@ const selectedOrderId = ref(null)
 
 // Cached data
 const restaurantLocations = ref({})
+const customerLocations = ref({})
 
 // Mock location simulation
 const shipperIntervals = ref({})
 const shipperRoutes = ref({})
 
+const deliveryStages = ref({}) // { orderId: 'to_restaurant' | 'to_customer' | 'completed' }
+
 // Base fallback location (Hanoi center)
 const HANOI_CENTER = { lat: 21.0285, lng: 105.8542 }
-
+const ARRIVAL_THRESHOLD = 50
 // Computed
 const activeShippersCount = computed(() => {
   return shipperStore.shippers.filter(s =>
@@ -152,17 +172,21 @@ const activeShippersCount = computed(() => {
 const activeOrders = computed(() => {
   if (!authStore.user) return []
 
-  return orderStore.orders.filter(order => {
+  const orders = orderStore.orders || []
+  const restaurants = restaurantStore.restaurants || []
+  const shippers = shipperStore.shippers || []
+
+  return orders.filter(order => {
     if (order.status !== 'delivering') return false
 
     const role = authStore.user.role
     if (role === 'customer') {
       return order.customer_id === authStore.user.id
     } else if (role === 'restaurant_admin') {
-      const userRestaurant = restaurantStore.restaurants.find(r => r.manager_id === authStore.user.id)
+      const userRestaurant = restaurants.find(r => r.manager_id === authStore.user.id)
       return userRestaurant && order.restaurant_id === userRestaurant.id
     } else if (role === 'shipper') {
-      const shipperRecord = shipperStore.shippers.find(s => s.user_id === authStore.user.id)
+      const shipperRecord = shippers.find(s => s.user_id === authStore.user.id)
       return shipperRecord && order.shipper_id === shipperRecord.id
     }
     return false
@@ -215,6 +239,32 @@ async function getRestaurantLocation(restaurantId) {
   // Fallback
   return { ...HANOI_CENTER, name: `Restaurant #${restaurantId}` }
 }
+
+// Get customer location from API
+async function getCustomerLocation(customerId) {
+  if (customerLocations.value[customerId]) {
+    return customerLocations.value[customerId]
+  }
+
+  try {
+    const locationData = await userStore.fetchUserLocation(customerId)
+    if (locationData && locationData.address) {
+      const location = await geocodeAddress(locationData.address)
+      if (location) {
+        customerLocations.value[customerId] = {
+          ...location,
+          name: `Customer #${customerId}`
+        }
+        return customerLocations.value[customerId]
+      }
+    }
+  } catch (err) {
+    console.error(`Failed to get customer ${customerId} location:`, err)
+  }
+
+  return { ...HANOI_CENTER, name: `Customer #${customerId}` }
+}
+
 
 // Get restaurant name
 function getRestaurantName(restaurantId) {
@@ -286,11 +336,18 @@ async function sendLocationToBackend(shipperId, location) {
 async function startRouteBasedTracking(shipper, order) {
   if (shipperIntervals.value[shipper.id]) return
 
-  const restaurantLoc = await getRestaurantLocation(order.restaurant_id)
+  // Initialize delivery stage
+  if (!deliveryStages.value[order.id]) {
+    deliveryStages.value[order.id] = 'to_restaurant'
+  }
 
-  // Get real route from Mapbox Directions API
+  const restaurantLoc = await getRestaurantLocation(order.restaurant_id)
+  const customerLoc = await getCustomerLocation(order.customer_id)
+
   const currentLoc = shipperLocations.value[shipper.id] || HANOI_CENTER
-  const routeWaypoints = await getMapboxRoute(currentLoc, restaurantLoc)
+
+  // Get route to restaurant first
+  let routeWaypoints = await getMapboxRoute(currentLoc, restaurantLoc)
 
   if (!routeWaypoints || routeWaypoints.length === 0) {
     console.error('Failed to get route, falling back to random movement')
@@ -302,7 +359,9 @@ async function startRouteBasedTracking(shipper, order) {
     waypoints: routeWaypoints,
     currentIndex: 0,
     orderId: order.id,
-    restaurantLoc
+    restaurantLoc,
+    customerLoc,
+    stage: 'to_restaurant'
   }
 
   // Set initial location
@@ -316,16 +375,53 @@ async function startRouteBasedTracking(shipper, order) {
   sendLocationToBackend(shipper.id, shipperLocations.value[shipper.id])
 
   // Update every 5 seconds
-  shipperIntervals.value[shipper.id] = setInterval(() => {
+  shipperIntervals.value[shipper.id] = setInterval(async () => {
     const route = shipperRoutes.value[shipper.id]
     if (!route) return
 
     // Move to next waypoint
     route.currentIndex++
 
-    // If reached end, loop back (or you can stop here)
+    // Check if reached current destination
     if (route.currentIndex >= route.waypoints.length) {
-      route.currentIndex = 0
+      if (route.stage === 'to_restaurant') {
+        // Reached restaurant, now go to customer
+        console.log(`Shipper ${shipper.id} reached restaurant for order ${order.id}`)
+
+        deliveryStages.value[order.id] = 'to_customer'
+        route.stage = 'to_customer'
+
+        // Get route to customer
+        const routeToCustomer = await getMapboxRoute(route.restaurantLoc, route.customerLoc)
+        if (routeToCustomer && routeToCustomer.length > 0) {
+          route.waypoints = routeToCustomer
+          route.currentIndex = 0
+        } else {
+          console.error('Failed to get route to customer')
+          return
+        }
+      } else if (route.stage === 'to_customer') {
+        // Reached customer, mark as completed
+        console.log(`Shipper ${shipper.id} reached customer for order ${order.id}`)
+
+        deliveryStages.value[order.id] = 'completed'
+
+        // Auto-update order status to 'completed' if user is customer
+        if (authStore.user?.role === 'customer' && order.customer_id === authStore.user.id) {
+          try {
+            await orderStore.updateOrderStatus(order.id, 'completed')
+            console.log(`Order ${order.id} automatically marked as completed`)
+
+            showNotification('✅ Your order has been delivered!', 'success')
+          } catch (err) {
+            console.error('Failed to auto-update order status:', err)
+          }
+        }
+
+        // Stop tracking this shipper
+        stopShipperLocationUpdates(shipper.id)
+        return
+      }
     }
 
     const currentPoint = route.waypoints[route.currentIndex]
@@ -425,11 +521,13 @@ async function focusOnOrder(order) {
   if (!map.value) return
 
   const restaurantLoc = await getRestaurantLocation(order.restaurant_id)
+  const customerLoc = await getCustomerLocation(order.customer_id)
   const shipperLoc = shipperLocations.value[order.shipper_id]
 
   if (shipperLoc) {
     const bounds = new mapboxgl.LngLatBounds()
     bounds.extend([restaurantLoc.lng, restaurantLoc.lat])
+    bounds.extend([customerLoc.lng, customerLoc.lat])
     bounds.extend([shipperLoc.longitude, shipperLoc.latitude])
 
     map.value.fitBounds(bounds, { padding: 100 })
@@ -437,7 +535,7 @@ async function focusOnOrder(order) {
 }
 
 // Draw route on map
-async function drawRouteOnMap(orderId, restaurantLoc, shipperLoc) {
+async function drawRouteOnMap(orderId, restaurantLoc, customerLoc, shipperLoc) {
   if (!map.value || !map.value.isStyleLoaded()) return
 
   const routeId = `route-${orderId}`
@@ -450,10 +548,13 @@ async function drawRouteOnMap(orderId, restaurantLoc, shipperLoc) {
     map.value.removeSource(routeId)
   }
 
-  // Get route from shipper to restaurant
+  const stage = deliveryStages.value[orderId]
+  let targetLoc = stage === 'to_customer' ? customerLoc : restaurantLoc
+
+  // Get route from shipper to target
   const routeWaypoints = await getMapboxRoute(
       { lat: shipperLoc.latitude, lng: shipperLoc.longitude },
-      restaurantLoc
+      targetLoc
   )
 
   if (routeWaypoints && routeWaypoints.length > 0) {
@@ -487,8 +588,8 @@ async function drawRouteOnMap(orderId, restaurantLoc, shipperLoc) {
   }
 
   // Add restaurant marker
-  if (!restaurantMarkers.value[orderId]) {
-    restaurantMarkers.value[orderId] = new mapboxgl.Marker({
+  if (!restaurantMarkers.value[`restaurant-${orderId}`]) {
+    restaurantMarkers.value[`restaurant-${orderId}`] = new mapboxgl.Marker({
       color: '#f59e0b',
       scale: 1.2
     })
@@ -502,7 +603,38 @@ async function drawRouteOnMap(orderId, restaurantLoc, shipperLoc) {
         .addTo(map.value)
   }
 
+  // Add customer marker
+  if (!customerMarkers.value[`customer-${orderId}`]) {
+    customerMarkers.value[`customer-${orderId}`] = new mapboxgl.Marker({
+      color: '#22c55e',
+      scale: 1.2
+    })
+        .setLngLat([customerLoc.lng, customerLoc.lat])
+        .setPopup(new mapboxgl.Popup().setHTML(`
+        <div class="custom-popup">
+          <h4>📍 ${customerLoc.name}</h4>
+          <p>${customerLoc.address || ''}</p>
+        </div>
+      `))
+        .addTo(map.value)
+  }
+
   routeLines.value[orderId] = routeId
+}
+
+// Show notification
+function showNotification(message, type = 'success') {
+  const notification = document.createElement('div')
+  notification.className = `notification ${type}`
+  notification.textContent = message
+  document.body.appendChild(notification)
+
+  setTimeout(() => notification.classList.add('show'), 10)
+
+  setTimeout(() => {
+    notification.classList.remove('show')
+    setTimeout(() => document.body.removeChild(notification), 300)
+  }, 5000)
 }
 
 // Initialize
@@ -666,9 +798,10 @@ async function updateRoutes() {
   for (const order of activeOrders.value) {
     if (order.shipper_id && shipperLocations.value[order.shipper_id]) {
       const restaurantLoc = await getRestaurantLocation(order.restaurant_id)
+      const customerLoc = await getCustomerLocation(order.customer_id)
       const shipperLoc = shipperLocations.value[order.shipper_id]
 
-      await drawRouteOnMap(order.id, restaurantLoc, shipperLoc)
+      await drawRouteOnMap(order.id, restaurantLoc, customerLoc, shipperLoc)
     }
   }
 }
@@ -690,10 +823,6 @@ function createMarkerElement(shipper) {
   return el
 }
 
-function isShipperActive(status) {
-  return status === 'available' || status === 'busy'
-}
-
 function getStatusLabel(status) {
   const labels = {
     available: '🟢 Available',
@@ -706,21 +835,36 @@ function getStatusLabel(status) {
   }
   return labels[status] || status
 }
-
-function formatTime(timestamp) {
-  if (!timestamp) return 'Unknown'
-  const date = new Date(timestamp)
-  const now = new Date()
-  const diff = Math.floor((now - date) / 1000)
-
-  if (diff < 60) return `${diff}s ago`
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
-  return date.toLocaleString()
-}
 </script>
 
 <style scoped>
+
+.delivery-stage {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.delivery-stage span {
+  flex: 1;
+  text-align: center;
+  padding: 0.5rem;
+  background: #f3f4f6;
+  color: #9ca3af;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+
+.delivery-stage span.active {
+  background: #fef3c7;
+  color: #92400e;
+  box-shadow: 0 2px 4px rgba(234, 88, 12, 0.2);
+}
+
 .container {
   max-width: 1400px;
   margin: 0 auto;

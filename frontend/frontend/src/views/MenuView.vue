@@ -75,16 +75,19 @@
 
                 <div class="item-footer">
                   <span class="price">${{ parseFloat(item.price).toFixed(2) }}</span>
+
+                  <!-- Add to Cart Button: Only for customers -->
                   <button
-                      v-if="item.available"
+                      v-if="authStore.user?.role === 'customer' && item.available"
                       @click="addToCart(item)"
                       class="btn-add"
-                      :disabled="!item.available"
                   >
                     <ShoppingCart :size="18" />
                     Add to Cart
                   </button>
-                  <span v-else class="unavailable-text">
+
+                  <!-- Unavailable Text -->
+                  <span v-else-if="!item.available" class="unavailable-text">
                     Out of Stock
                   </span>
                 </div>
@@ -93,8 +96,8 @@
           </div>
         </div>
 
-        <!-- Cart Summary (Fixed Bottom) -->
-        <div v-if="cartStore.items.length > 0" class="cart-summary">
+        <!-- Cart Summary (Fixed Bottom) - Only for customers -->
+        <div v-if="authStore.user?.role === 'customer' && cartStore.items.length > 0" class="cart-summary">
           <div class="cart-info">
             <ShoppingCart :size="20" />
             <span>{{ cartStore.items.length }} items</span>
@@ -134,11 +137,13 @@ import {
 import Navbar from '../components/Navbar.vue'
 import { useRestaurantStore } from '../stores/restaurant'
 import { useCartStore } from '../stores/cart'
+import { useAuthStore } from '../stores/auth'
 
 const route = useRoute()
 const router = useRouter()
 const restaurantStore = useRestaurantStore()
 const cartStore = useCartStore()
+const authStore = useAuthStore()
 
 // Biến riêng để lưu menu items
 const menuItems = ref([])
@@ -153,8 +158,10 @@ onMounted(async () => {
   const items = await restaurantStore.fetchMenu(id)
   menuItems.value = items || []
 
-  // Set restaurant for cart
-  cartStore.setRestaurant(id)
+  // Set restaurant for cart (only for customers)
+  if (authStore.user?.role === 'customer') {
+    cartStore.setRestaurant(id)
+  }
 })
 
 const cartTotal = computed(() => {
@@ -174,6 +181,7 @@ const goToCart = () => {
 
 const addToCart = (item) => {
   if (!item.available) return
+  if (authStore.user?.role !== 'customer') return
 
   cartStore.addItem(item)
 
@@ -460,14 +468,9 @@ const showNotification = (message) => {
   transition: all 0.2s;
 }
 
-.btn-add:hover:not(:disabled) {
+.btn-add:hover {
   background: #c2410c;
   transform: scale(1.05);
-}
-
-.btn-add:disabled {
-  background: #d1d5db;
-  cursor: not-allowed;
 }
 
 .unavailable-text {

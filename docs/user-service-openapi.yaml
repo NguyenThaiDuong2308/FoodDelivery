@@ -191,6 +191,30 @@ paths:
         "404":
           description: Not found
 
+  /user/{id}/get-location:
+    get:
+      summary: Get user location by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  address:
+                    type: string
+
   /user/{id}:
     get:
       summary: Get user by ID

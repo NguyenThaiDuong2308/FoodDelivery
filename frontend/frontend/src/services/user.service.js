@@ -21,4 +21,8 @@ export const userService = {
         const response = await apiClient.delete(API_ENDPOINTS.USER_BY_ID(id))
         return response.data
     },
+    async getLocation(id){
+        const response = await apiClient.get(API_ENDPOINTS.USER_LOCATION(id))
+        return response.data
+    }
 }
