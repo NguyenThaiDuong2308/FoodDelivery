@@ -88,7 +88,7 @@ services:
       SMTP_Host: smtp.gmail.com
       SMTP_Port: 587
       SMTP_Username: 03thaiduong@gmail.com
-      SMTP_Password: jppyjcxlxrlcaufy
+      SMTP_Password:
       SMTP_From: 03thaiduong@gmail.com
     ports:
       - "8080:8080"
@@ -289,8 +289,4 @@ volumes:
   redis_data:
   postgres_data:
   kong_data:
-
-#Git token: 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
-# New token: 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
-#192.168.237.128
 

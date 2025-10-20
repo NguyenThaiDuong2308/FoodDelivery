@@ -34,7 +34,7 @@ type Mailer interface {
 func (m *SMTPMailer) SendResetPasswordEmail(ctx context.Context, toEmail string, token string) error {
 	auth := smtp.PlainAuth("", m.Username, m.Password, m.Host)
 	subject := "Reset Password"
-	resetLink := fmt.Sprintf("http://192.168.237.130:5173/reset-forgot-password?token=%s", token)
+	resetLink := fmt.Sprintf("http://localhost:5173/reset-forgot-password?token=%s", token)
 	body := fmt.Sprintf("Click the link to reset your password: \n\n%s", resetLink)
 	msg := []byte(fmt.Sprintf(
 		"To: %s\r\n"+

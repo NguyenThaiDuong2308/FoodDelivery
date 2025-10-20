@@ -128,8 +128,8 @@ import {useUserStore} from "@/stores/user";
 // Mapbox Access Token
 mapboxgl.accessToken = 'pk.eyJ1Ijoibmd1eWVudGhhaWR1b25nIiwiYSI6ImNtZm1kZXQ3ODAwcDgyaXE3MnprZTNnM2sifQ.VRjRwGiuFp342CTc1RXOmQ'
 
-//const API_BASE_URL = 'http://localhost:8000'
-const API_BASE_URL = 'http://192.168.237.130:8000'
+const API_BASE_URL = 'http://localhost:8000'
+//const API_BASE_URL = 'http://192.168.237.130:8000'
 
 const shipperStore = useShipperStore()
 const orderStore = useOrderStore()
